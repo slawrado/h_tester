@@ -89,7 +89,7 @@ class Q1:
 
     q1_ip = 'start'
 
-    def __init__(self, ip='192.168.5.202', w=None): # ip='192.168.1.108'
+    def __init__(self, ip='192.168.1.108', w=None): # ip='192.168.1.108'
         self.ip = ip
         self.w = w
         self.registers_values = {}
@@ -115,9 +115,9 @@ class Q1:
         resp = resp.strip('\"').split('\"\"')
         return resp
 
-    def get_rectifier_serial(self):
+    def get_rectifier_serial(self, rect_number):
         """Odczytuje numery seryjne prostowników."""
-        query = tuple(['.1.3.6.1.4.1.32038.2.2.2.2.1.20.'+str(i) for i in range(4)])
+        query = tuple(['.1.3.6.1.4.1.32038.2.2.2.2.1.20.'+str(i) for i in range(rect_number)])
         response = self.snmp_querry(*query).strip('\"').split('\"\"')
         return response
     def set_dufault_ip(self):
@@ -684,7 +684,8 @@ if __name__ == "__main__":
     time.sleep(5)
     print(mww.odczyt(2))"""
     #mww = MWW()
-    sterownik = Q1(ip='192.168.5.202')
+    sterownik = Q1(ip='192.168.1.108')
+    print(sterownik.get_rectifier_serial(5))
     #mww.send_packet('2,2,0')
     #time.sleep(5)
     #print('alarm')
@@ -704,7 +705,7 @@ if __name__ == "__main__":
     #print('ip: ',sterownik.set_dufault_ip())
     #sterownik.snmp_querry('.1.3.6.1.4.1.32038.2.2.13.1.0', value=3637)
     #resp = sterownik.snmp_querry('.1.3.6.1.4.1.32038.2.2.2.2.1.23.' + str(2), value=3) 
-    print(sterownik.snmp_querry('.1.3.6.1.4.1.32038.2.2.5.1.2.1.5.0', '.1.3.6.1.4.1.32038.2.2.5.1.2.1.4.0', '.1.3.6.1.4.1.32038.2.2.5.1.2.1.7.0', '.1.3.6.1.4.1.32038.2.2.5.1.2.1.8.0', '.1.3.6.1.4.1.32038.2.2.5.1.2.1.13.0', '.1.3.6.1.4.1.32038.2.2.5.1.2.1.3.0'))
+    #print(sterownik.snmp_querry('.1.3.6.1.4.1.32038.2.2.5.1.2.1.5.0', '.1.3.6.1.4.1.32038.2.2.5.1.2.1.4.0', '.1.3.6.1.4.1.32038.2.2.5.1.2.1.7.0', '.1.3.6.1.4.1.32038.2.2.5.1.2.1.8.0', '.1.3.6.1.4.1.32038.2.2.5.1.2.1.13.0', '.1.3.6.1.4.1.32038.2.2.5.1.2.1.3.0'))
 
     
 

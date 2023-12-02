@@ -22,7 +22,12 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 fh.setFormatter(formatter)
 logger.addHandler(fh)
 
+test_classes = []
 
+
+def register(decorated):
+    test_classes.append(decorated)   
+    return decorated
 
 
 def printr(napis, w, log, color=None):
@@ -44,12 +49,15 @@ def sec2min(total_seconds):
     time_string = "{:02d}:{:02d}:{:02d}".format(total_seconds // 3600, total_seconds // 60, total_seconds % 60)
     return time_string
 
-
+@register
 class TestStycznika:
 
     """Zwiera i rozwiera styczniki"""
+    test_number = 5
+    test_key = '-STYCZNIK'
     test_name = 'Test styczników'
     config_name = 'Styczniki'
+    config_range = list(range(4))
     required_modules = (modules.Q1, )
 
     def __init__(self, number=0, w=None):
@@ -62,6 +70,7 @@ class TestStycznika:
         """Tworzy obiekty modułów używanych przy wykonywaniu testu"""
         if self.number:
             self.q1 = modules.Q1()
+
 
     def stycznik_open(self, i):
         """Otwiera stycznik"""
@@ -170,12 +179,15 @@ class TestStycznika:
             self.w['progress'].update_bar(0, 0)
         return True
 
-
+@register
 class TestBocznika:
 
     """Sprawdza wartość i kierunek prądu baterii"""
+    test_number = 6
+    test_key = '-BOCZNIK'
     test_name = 'Test boczników'
     config_name = 'Boczniki'
+    config_range = list(range(2))
     required_modules = (modules.Q1, modules.MZF, modules.LOAD)
 
     def __init__(self, number=0, w=None):
@@ -244,12 +256,14 @@ class TestBocznika:
         del stycznik
         return test
 
-
+@register
 class TestRs485:
     """Sprawdzenie komunikacji po RS485"""
-
+    test_number = 11
+    test_key = '-RS485'
     test_name = 'Test komunikacji rs485 modbus'
     config_name = 'RS485'
+    config_range = list(range(2))
     required_modules = (modules.Q1, modules.RS485)
 
     def __init__(self, number=0, w=None):
@@ -296,11 +310,14 @@ class TestRs485:
             print('Komunikacja modbus RS485 Error')
             return False
 
+@register
 class TestBezpiecznikaBat:
     """Sprawdzenie zadziałania alarmu bezpiecznika baterii modernizacja enetek"""
-
+    test_number = 13
+    test_key = '-BAT-FUSE-MOD'
     test_name = 'Test alarmu bezpiecznika baterii'
     config_name = 'Bezpiecznik baterii'
+    config_range = list(range(5))
     required_modules = (modules.Q1, modules.MWW)
 
     def __init__(self, number=0, w=None):
@@ -381,12 +398,14 @@ class TestBezpiecznikaBat:
 
     # .1.3.6.1.4.1.32038.2.2.5.22.1.4.0 bezpiecznik baterii
     # 1.3.6.1.4.1.32038.2.2.5.24.1.2.0   alarms.alarmsAsyTable.alarmsAsyEntry.alarmsBattAsyHi	  
-
+@register
 class TestAsymBat:
     """Sprawdzenie zadziałania alarmu asymetrii baterii modernizacja enetek"""
-
+    test_number = 12
+    test_key = '-ASYM'
     test_name = 'Test asymetrii baterii'
     config_name = 'Asymetria baterii'
+    config_range = list(range(2))
     required_modules = (modules.Q1, modules.MWW)
 
     def __init__(self, number=0, w=None):
@@ -458,10 +477,14 @@ class TestAsymBat:
             self.w['progress'].update_bar(0, 0)
         return True
 
+@register
 class TestInput:
     """Sprawdzenie wejść (MWE)"""
+    test_number = 4
+    test_key = '-INPUTS'
     test_name = 'Test wejść (MWE)'
     config_name = 'Wejscia (MWE)'
+    config_range = list(range(0, 17, 8))
     required_modules = (modules.Q1, modules.MWW)
 
     def __init__(self, number=0, w=None):
@@ -529,12 +552,14 @@ class TestInput:
         return True
 
 
-
+@register
 class TestOutputQ1:
     """Sprawdza wyjscia Q1"""
-
+    test_number = 2
+    test_key = '-OUTPUT-Q1'
     test_name = 'Test wyjść (Q1)'
     config_name = 'Wyjścia (Q1)'
+    config_range = list(range(5))
     name, adres, offset = 'Q1', 0, 1
     required_modules = (modules.Q1, modules.MWW)
 
@@ -608,19 +633,24 @@ class TestOutputQ1:
             self.w['progress'].update_bar(0, 0)
         return True
 
-
+@register
 class TestOutputMWY(TestOutputQ1):
     """Sprawdza wyjscia Q1"""
+    test_number = 3
+    test_key = '-OUTPUT-MWY'
     test_name = 'Test wyjść (MWY)'
     config_name = 'Wyjścia (MWY)'
+    config_range = list(range(9))
     name, adres, offset = 'MWY', 1, 9
 
-
+@register
 class TestUkb:
     """Sprawdza działanie płytki UKB"""
-
+    test_number = 1
+    test_key = '-UKB'
     test_name = 'Test kontroli zabezpieczeń odbiorów'
     config_name = 'Zabezpieczenia odbiorów'
+    config_range = None
     required_modules = (modules.Q1, modules.MWW)
 
     def __init__(self, number=0, w=None):
@@ -694,10 +724,14 @@ class TestUkb:
             self.w['progress'].update_bar(0, 0)
         return True
 
+@register
 class TestCzujnikowMZK:
     """Sprawdza czujniki podłączone do MZK"""
+    test_number = 14
+    test_key = '-CZUJNIK-MZK'
     test_name = 'Test czujników (MZK)'
     config_name = 'Czujniki (MZK)'
+    config_range = list(range(2))
     required_modules = (modules.Q1, )
 
     def __init__(self, number=0, w=None):
@@ -756,10 +790,14 @@ class TestCzujnikowMZK:
             self.w['progress'].update_bar(0, 0)
         return True
 
+@register
 class TestCzujnikowTemp:
     """Sprawdza czujniki temperatury podłączone do Q1"""
+    test_number = 7
+    test_key = '-CZUJNIK-TEMP'
     test_name = 'Test czujników temperatury (Q1)'
     config_name = 'Czujniki temperatury (Q1)'
+    config_range = list(range(4))
     required_modules = (modules.Q1, )
 
     def __init__(self, number=0, w=None):
@@ -833,12 +871,14 @@ class TestCzujnikowTemp:
             self.w['progress'].update_bar(0, 0)
         return True
 
-
+@register
 class TestBaterryFuses:
     """Sprawdza działanie płytki UKB"""
-
+    test_number = 8
+    test_key = '-BAT-FUSE'
     test_name = 'Test kontroli zabezpieczeń baterii'
     config_name = 'Zabezpieczenia baterii'
+    config_range = list(range(5))
     required_modules = (modules.Q1, modules.MZB)
 
     def __init__(self, number=0, w=None):
@@ -926,13 +966,15 @@ class TestBaterryFuses:
             self.w['progress'].update_bar(0, 0)
         return True
 
-
+@register
 class TestRectifier:
 
     """Sprawdza pracę prostowników"""
-
+    test_number = 9
+    test_key = '-PROSTOWNIK'
     test_name = 'Test prostowników (okablowanie)'
     config_name = 'Prostowniki'
+    config_range = None
     required_modules = (modules.Q1, modules.MZF)
     
 
@@ -1096,12 +1138,15 @@ class TestRectifier:
             self.w['progress'].update_bar(0, 0)
         return True
 
-
+@register
 class TestMZK:
 
     """Sprawdza sprawność MZK"""
+    test_number = 10
+    test_key = '-MZK'
     test_name = 'Test MZK'
     config_name = 'MZK'
+    config_range = list(range(2))
     required_modules = (modules.Q1, )
 
     def __init__(self, number=0, w=None):
@@ -1179,6 +1224,12 @@ class TestMZK:
             self.w['progress'].update_bar(0,0)
         return True
 
+"""print(test_classes)
+test_classes = sorted([x for  x in test_classes], key=lambda x: x.test_number)
+print(test_classes)
+for i in test_classes:
+    print(i.__name__, i.test_number, i.test_key, i.test_name, i.config_name)"""
+
 if __name__ == "__main__":
     """t = TestRs485(1)
     print(t.test())
@@ -1207,12 +1258,13 @@ if __name__ == "__main__":
     #rs485 = TestRs485(1)
     #print(rs485.test())
 
-    mzk = TestMZK(number=1)
+    """mzk = TestMZK(number=1)
     mzk.get_modules()
     mzk.test()
     mzk_sensor = TestCzujnikowMZK(number=1)
     mzk_sensor.get_modules()
-    mzk_sensor.test()
+    mzk_sensor.test()"""
+ 
 
 
 

@@ -1,7 +1,7 @@
 """Okna aplikacji"""
 import errno
 import os
-#import shelve
+from collections import namedtuple
 import sys
 import time
 from datetime import datetime
@@ -12,45 +12,63 @@ import modules
 import testy
 import threading
 # 192.168.1.122
+ #('-UKB', '-OUTPUT-Q1', '-OUTPUT-MWY', '-INPUTS', '-STYCZNIK', '-BOCZNIK', '-CZUJNIK-TEMP', '-BAT-FUSE','-PROSTOWNIK', '-MZK', '-RS485', '-ASYM', '-BAT-FUSE-MOD', '-CZUJNIK-MZK')
+ #Pomijamy sprawdzenie modułów
+selftest, stop_test, default_ip, bez_izolacji, bez_prostowników = False, False, False, False, False
+# operators = ['A.Salamon', 'M.Dżygun', 'W.Sławiński', 'Z.Batogowski', 'W.Tomczyk', 'K.Hamann']
+operators = {'A.Salamon':'', 'M.Dżygun':'', 'W.Sławiński':'177/E/0832/19', 'Z.Batogowski':'177/E/0709/23', 'W.Tomczyk':'177/E/0708/23', 'K.Hamann':'177/E/0706/23'}    
+Test_data = namedtuple('Test_data', ['test_class','test_name', 'config_name', 'config_range', 'required_modules', 'config', 'result'])
+test_classes = tuple(testy.test_classes) 
 
-selftest = False #Pomijamy sprawdzenie modulów
 
-operators = ['A.Salamon', 'M.Dżygun', 'W.Sławiński', 'Z.Batogowski', 'W.Tomczyk', 'K.Hamann']
-test_keys = ('-UKB', '-OUTPUT-Q1', '-OUTPUT-MWY', '-INPUTS', '-STYCZNIK', '-BOCZNIK', '-CZUJNIK-TEMP', '-BAT-FUSE',
-             '-PROSTOWNIK', '-MZK', '-RS485', '-ASYM', '-BAT-FUSE-MOD', '-CZUJNIK-MZK')
-test_clasess = (testy.TestUkb, testy.TestOutputQ1, testy.TestOutputMWY, testy.TestInput,
-                testy.TestStycznika, testy.TestBocznika, testy.TestCzujnikowTemp,
-                testy.TestBaterryFuses, testy.TestRectifier, testy.TestMZK, testy.TestRs485,
-                testy.TestAsymBat, testy.TestBezpiecznikaBat, testy.TestCzujnikowMZK)
-tests = dict(zip(test_keys, test_clasess))
+tests = {}
+for i in test_classes:
+    tests[i.test_key] = Test_data(i, i.test_name, i.config_name, i.config_range, i.required_modules, [0], [False])
 
-config = dict(zip(test_keys, tuple(len(test_keys) * [0])))
-rezult = dict(zip(test_keys, tuple(len(test_keys) * [False])))
-config_range = {'-OUTPUT-Q1': [i for i in range(5)], '-OUTPUT-MWY': [i for i in range(9)],
-                '-INPUTS': [i for i in range(0, 17, 8)], '-STYCZNIK': [i for i in range(4)],
-                '-BOCZNIK': [i for i in range(2)], '-CZUJNIK-TEMP': [i for i in range(4)],
-                '-BAT-FUSE': [i for i in range(5)], '-MZK': [i for i in range(2)], '-RS485': [i for i in range(2)],
-                '-ASYM': [i for i in range(2)], '-BAT-FUSE-MOD': [i for i in range(2)], '-CZUJNIK-MZK': [i for i in range(2)]}
 ident = {'Nazwa:  ': '', 'Indeks:  ': '', 'Nr seryjny:  ': '', 'Nr seryjny Q1:  ': '',
-         'Wersja programu Q1:  ': '', 'Wersja konfiguracji Q1:  ': '', 'Operator:  ':  '', 'Data:  ':  ''}
+         'Wersja programu Q1:  ': '', 'Wersja konfiguracji Q1:  ': '', 'Operator (test izolacji):  ':  '', 'Operator (test systemu):  ':  '', 'Data:  ':  ''}
 
-indeks_nazwa = {'0-000-0': ('xxx xxx', 'OS-000000-0000'),
+indeks_nazwa = {'0000-00000-00': ('Custom test', 'OS-000309-001E'),
                  '9070-00696-22': ('Modernizacja Benning', 'OS-000310-002E'), 
                  '9070-00696-28': ('Modernizacja Benning', 'OS-000310-002E'),
-                 '9030-00328': ('H-system', 'OS-000311-002A')}
-indeks_config = {'9070-00696-22': {'-UKB': 1, '-OUTPUT-Q1': 0, '-OUTPUT-MWY': 7, '-INPUTS': 0, '-STYCZNIK': 2, '-BOCZNIK': 1,
-                             '-CZUJNIK-TEMP': 1, '-BAT-FUSE': 0, '-PROSTOWNIK': 4, '-MZK': 0, '-RS485': 0,
-                             '-ASYM': 1, '-BAT-FUSE-MOD': 1, '-CZUJNIK-MZK': 0},
+                 '9030-00328': ('H-system', 'OS-000311-002A'),
+                 }
+indeks_config = {
                  '9070-00696-28': {'-UKB': 1, '-OUTPUT-Q1': 0, '-OUTPUT-MWY': 7, '-INPUTS': 0, '-STYCZNIK': 2, '-BOCZNIK': 1,
                              '-CZUJNIK-TEMP': 1, '-BAT-FUSE': 0, '-PROSTOWNIK': 4, '-MZK': 0, '-RS485': 0,
                              '-ASYM': 1, '-BAT-FUSE-MOD': 1, '-CZUJNIK-MZK': 0},
+                 '9070-00696-22': {'-UKB': 1, '-OUTPUT-Q1': 0, '-OUTPUT-MWY': 7, '-INPUTS': 0, '-STYCZNIK': 2, '-BOCZNIK': 1,
+                             '-CZUJNIK-TEMP': 1, '-BAT-FUSE': 0, '-PROSTOWNIK': 4, '-MZK': 0, '-RS485': 0,
+                             '-ASYM': 1, '-BAT-FUSE-MOD': 1, '-CZUJNIK-MZK': 0},                             
                  '9030-00328': {'-UKB': 0, '-OUTPUT-Q1': 0, '-OUTPUT-MWY': 0, '-INPUTS': 0, '-STYCZNIK': 0, '-BOCZNIK': 0,
                              '-CZUJNIK-TEMP': 0, '-BAT-FUSE': 0, '-PROSTOWNIK': 0, '-MZK': 1, '-RS485': 0,
-                             '-ASYM': 0, '-BAT-FUSE-MOD': 0, '-CZUJNIK-MZK': 1}          }
+                             '-ASYM': 0, '-BAT-FUSE-MOD': 0, '-CZUJNIK-MZK': 1},         
+                 '0000-00000-00': {'-UKB': 0, '-OUTPUT-Q1': 0, '-OUTPUT-MWY': 0, '-INPUTS': 0, '-STYCZNIK': 0, '-BOCZNIK': 0,
+                             '-CZUJNIK-TEMP': 0, '-BAT-FUSE': 0, '-PROSTOWNIK': 0, '-MZK': 0, '-RS485': 0,
+                             '-ASYM': 0, '-BAT-FUSE-MOD': 0, '-CZUJNIK-MZK': 0},             }
+
+def set_config(indeks, debug=False):
+    if debug:
+        print('indeks config')
+        for j in indeks_config[indeks]:
+            print(j, indeks_config[indeks][j], end='')
+        print('tests config')    
+        for i in tests:
+            print(i, tests[i].config[0], end='')
+    for i in indeks_config[indeks]:
+        if indeks_config[indeks][i] == 0:
+            del tests[i]
+        else:
+            tests[i].config[0] = indeks_config[indeks][i]
+    if debug:        
+        for j in indeks_config[indeks]:
+            print(j, indeks_config[indeks][j], end='')            
+        for i in tests:
+            print(i, tests[i].config[0], end='')   
 
 json_file = {}
 json_file.update(ident)
-stop_test, non_edit = False, False
+
 
 
 tip = ('\"Podaje plusa\" na kolejne zabezpieczenia i weryfikuje wejście i zejście alarmu bezpiecznika odbioru.',
@@ -67,7 +85,7 @@ tip = ('\"Podaje plusa\" na kolejne zabezpieczenia i weryfikuje wejście i zejś
        'Podaje minus na wej alarmu asymetrii sterownika',
        'Podaje minus na wej alarmu bezpiecznika baterii sterownika',
        'Sprawdza komunikację MZK z czujnikami temperatury.',)
-text_p = dict(zip(test_keys, tip))
+text_p = dict(zip(tuple(tests.keys()), tip))
 
 
 def check_number(number, key):
@@ -82,54 +100,46 @@ def check_number(number, key):
 
 
 def test_all_thread(w):
-    """Uruchamia wszystkie skonfigurowane testy."""
+    """Uruchamia wszystkie testy danej konfiguracji."""
 
-    for i in test_keys:
+    for i in tests:
         w[i + 'R'].update('')  # zerowanie wników testów
-    liczba_testow = len(config) - list(config.values()).count(0)
+    liczba_testow = len(tests) # - len([tests[i].config[0] for i in tests if tests[i].config[0] == 0])                                    
     print('Liczba zaplanowanych testów: ', liczba_testow)
     if stop_test:
         print('Zatrzymanie testów po pierwszym negatywnym !')
     start = datetime.now()
-    for i in test_keys:
-        if config[i]:  # jeśli test został skonfigurowny tzn != 0
-            print('Test numer: {}'.format(test_keys.index(i)+1))
-            w[i + 'R'].update('In progress', text_color='yellow')
-            w.refresh()
-            ti = tests[i](config[i], w)
-            if ti.test():  # jeśli wykonał się poprawnie: zwrócił True
-                w[i + 'R'].update('Ok', text_color='white')
-                rezult[i] = True
-            else:
-                w[i + 'R'].update('Fail', text_color='red')
-                if stop_test:
-                    return
-            time.sleep(2)
+    for i in tests:
+        print('Test numer: {}'.format(tuple(tests.keys()).index(i)+1))
+        w[i + 'R'].update('In progress', text_color='yellow')
+        w.refresh()
+        ti = tests[i].test_class(tests[i].config[0], w) #instancja obiektu testu
+        if ti.test():  # wywołanie metody test, jeśli wykona się poprawnie: zwróci True
+            w[i + 'R'].update('Ok', text_color='white')
+            tests[i].result[0] = True
         else:
-            print('Test nr:  {} pominięty w konfiguracji.'.format(test_keys.index(i) + 1))
-            w[i + 'R'].update('Not configured', text_color='grey')
-            w.refresh()
+            w[i + 'R'].update('Fail', text_color='red')
+            if stop_test:
+                return
+        time.sleep(2)
+
         w.refresh()
     # dane do raportu
     for i in ident:
         json_file[i] = ident[i]
     wynik = []
-    for i in test_keys:
-        if config[i]:
-            wynik.append(rezult[i])
-            json_file[tests[i].test_name] = rezult[i], config[i]
-        else:
-            if tests[i].test_name in json_file:
-                del json_file[tests[i].test_name]
+    for i in tests:
+        wynik.append(tests[i].result[0])
+        json_file[tests[i].test_name] = tests[i].result[0], tests[i].config[0]
 
-    #if config['-PROSTOWNIK']:
-        #json_file['prostowniki'] = q1.get_rectifier_serial()#numery seryjne prostowników
-    
-    if all(wynik):
-        q1 = modules.Q1()
+    q1 = modules.Q1()
+    if '-PROSTOWNIK' in tuple(tests.keys()) and not bez_prostowników:
+        json_file['prostowniki'] = q1.get_rectifier_serial(tests['-PROSTOWNIK'].config[0])#numery seryjne prostowników
+    json_file['ip'], json_file['izolacja'], json_file['noserial'] = default_ip, bez_izolacji, bez_prostowników   
+    if all(wynik) and default_ip:        
         q1.set_dufault_ip()
-        del q1
         print('Adres 192.168.5.120 , dhcp off')
+    del q1    
     stop = datetime.now()
     print('Czas wykonania testów:  {}, ilość wykonanych testów:  {}'.format(testy.sec2min((stop - start).total_seconds()),
                                                                             liczba_testow))
@@ -146,18 +156,21 @@ text_size = 60
 
 def make_main_window():
     """Tworzy zawartość głównego okna aplikacji."""
-    col1, col2, col3 = [], [], []
-    for i in test_keys:
-        col1.append([sg.Text('{:>2}. {}'.format(test_keys.index(i) + 1, tests[i].test_name), key=i + 'P', tooltip=text_p[i])])
+    col1, col2, col3, col4 = [], [], [], []
+    for i in tests:
+        col1.append([sg.Text('{:>2}. {}'.format(tuple(tests.keys()).index(i) + 1, tests[i].test_name), key=i + 'P', tooltip=text_p[i])])
         col2.append([sg.Text(size=(12, 1), key=i + 'R')])
-    for i in ident:
-        col3.append([sg.Text(' ' + i + ident[i], size=(34, 1), key=i)])
-    col3.append([sg.Text(size=(34, 1), key='-3')])  # , visible=False
+    
+    for i in ident: 
+        col3.append([sg.Text(f' {i}', size=(20, 1))])
+        col4.append([sg.Text(f' {ident[i]}', size=(15, 1), key=i)])
+    #col3.append([sg.Text(size=(34, 1), key='-3')])  # , visible=False 
     layout = [[sg.Text('Stan przekaźników: '),
 
                sg.Checkbox('Faza1', enable_events=True, key='f1'),
                sg.Checkbox('Faza2', enable_events=True, key='f2'),
                sg.Checkbox('Faza3', enable_events=True, key='f3'),
+               sg.Push(),
                sg.Checkbox('Bat1', enable_events=True, key='b1'),
                sg.Checkbox('Bat2', enable_events=True, key='b2'),
                sg.Checkbox('Bat3', enable_events=True, key='b3'),
@@ -166,10 +179,10 @@ def make_main_window():
                ],
 
               [sg.HSep()],
-              [sg.Button('Self test & power ON', key='-SF-', expand_x=True),
-               sg.Button('Konfiguracja testów', key='-KT-', disabled=True, expand_x=True)],  #
+              [sg.Button('Self test & power on', key='-SF-', expand_x=True),
+               sg.Button('Help', key='-KT-', disabled=True, expand_x=True)],  #
               [sg.HSep()],
-              [sg.Column(col1), sg.Column(col2), sg.Frame(' Identyfikacja ', col3)],
+              [sg.Column(col1), sg.Column(col2), sg.Frame(' Identyfikacja ', [[sg.Column(col3), sg.Column(col4)]], expand_x=True)],
               # , element_justification='right', expand_x=True
               [sg.HSep()],
               [sg.Text('Wykonanie testu: '),
@@ -183,8 +196,8 @@ def make_main_window():
     frame_layout = [[sg.Multiline(font=('Consolas', 10, 'normal'), size=(text_size + 21, 20),
                                   background_color='alice blue',
                                   autoscroll=True, reroute_stdout=True, reroute_stderr=True,
-                                  enable_events=True, text_color='gray', key='-OUTPUT-', auto_size_text=True)]]
-    layout.append([sg.Frame(" Work preview  ", frame_layout, element_justification='center')])
+                                  enable_events=True, text_color='gray', key='-OUTPUT-', auto_size_text=True, expand_x=True)]]
+    layout.append([sg.Frame(" Work preview  ", frame_layout, element_justification='center',expand_x=True)])
 
     return sg.Window('H tester', layout, finalize=True)
 
@@ -194,34 +207,28 @@ def make_conf_window():
     """Tworzy okno konfiguracji testów"""
     col1, col2 = [], []
     
-    for i in test_keys:
-        
-        col1.append([sg.Text(' {:>2}. {}: '.format(test_keys.index(i) + 1, tests[i].config_name))])
+    for i in tests:
+        col1.append([sg.Text(' {:>2}. {}: '.format(tuple(tests.keys()).index(i) + 1, tests[i].config_name))])
         if i in ('-UKB', '-PROSTOWNIK'):
-            col2.append([sg.Input(size=(5, 1), default_text=config[i], enable_events=True, justification='right',
-                      expand_x=True, key=i, disabled=non_edit)])          
+            col2.append([sg.Input(size=(5, 1), default_text=tests[i].config[0], enable_events=False, justification='right',
+                      expand_x=True, key=i, disabled=False)])          
         else:
-            col2.append([sg.Combo(config_range[i], size=(4, 1), default_value=config[i], enable_events=True,
-                      expand_x=True, key=i, disabled=non_edit)])
+            col2.append([sg.Combo(tests[i].config_range, size=(4, 1), default_value=0, enable_events=False,
+                      expand_x=True, key=i, disabled=False)])               
     layout = [
 
         [sg.Text('Konfiguracja testów: ')],
 
-        [sg.Checkbox('Zakończ po pierwszym negatywnym.', key='test_break', enable_events=True, )],
+        
         [sg.Column(col1), sg.Column(col2, element_justification='right', expand_x=True)],
         [sg.HSep()],
-        [sg.Button('Zapisz', tooltip='')]]
-    return sg.Window('Konfiguracja', layout, location=(0, 50), finalize=True).make_modal()
+        [sg.Push(), sg.Button('Zapisz', tooltip='')]]
+    return sg.Window('Konfiguracja uzytkownika', layout).read(close=True)# , finalize=True .make_modal() location=(0, 50)
 
 
 # main_window['-ST-'].set_focus()
 def self_test():
     """Sprawdza komunikację z modułami testera."""
-    # ip['-MWW-'], ip['-MZF-'], ip['-LOAD-'] , ip['-MZB-']= '192.168.1.102', '192.168.1.101',
-    # '192.168.1.103', '192.168.1.105' # MWW 102
-    # result = False
-    if not selftest:
-        return True
         
     if modules.ping('192.168.1.1'):
         print('Dostęp do sieci 192.168.1.xxx OK')
@@ -231,33 +238,19 @@ def self_test():
         # w.refresh()
         return False
     required = set()  # wymagane moduły dla danej konfiguracji testów.
-    for i in test_keys:
-        if config[i]:
-            for j in tests[i].required_modules:
-                required.add(j)
-    if ident['Indeks:  '] == '0-000-0':
-        required = {modules.MZF, modules.LOAD, modules.MWW, modules.Q1}  # modules.RS485 modules.MZB,
+    for i in tests:
+        for j in tests[i].required_modules:
+            required.add(j)
+    if ident['Indeks:  '] == '0000-00000-00':
+        required = {modules.MZF, modules.MWW, modules.Q1}  # modules.RS485 modules.MZB, modules.LOAD, 
    
     #required.remove(modules.Q1)
     for k in required:
-        """if k == modules.Q1:
-            if k(ip_q1).self_test():
-                print(f'Komunikacja z {k.__name__} OK.')
-                # w.refresh()
-            else:
-                print(f'Brak komunikacji z {k.__name__}.')
-                # w.refresh()
-                return False
-        else:"""
         if k().self_test():
             print(f'Komunikacja z {k.__name__} OK.')
-            # w.refresh()
         else:
             print(f'Brak komunikacji z {k.__name__}.')
-            # w.refresh()
             return False
-    # w.refresh()
-
     return True
 
 
@@ -268,12 +261,7 @@ def buttons_availability(w, stan):
             w[i].update(disabled=False)
         else:
             w[i].update(disabled=True)
-    if ident['Indeks:  '] == '0-000-0':
-        if stan:
-            w['-KT-'].update(disabled=False)
-        else:
-            w['-KT-'].update(disabled=True)
-
+    w.refresh()
 # Utworzenie katalogu do zapisu raportów z testów
 
 
@@ -282,66 +270,74 @@ try:
 except OSError as e:
     if e.errno != errno.EEXIST:
         raise
-"""if exists('gfg.dat'):
-    shelve_file = shelve.open("gfg")
-    ident['Operator:  '] = shelve_file['ident']['Operator:  ']
-    shelve_file.close()"""
+
 # Okno do wpisania indeksu i numeru serejnego testowanej siłowni
-event, values = sg.Window('Indeksy',
-                          [[sg.Text('Indeks: ', size=(15, 1)),
+event, values = sg.Window('Wybór szablonu',
+                          [[sg.Text('Indeks wyrobu: ', size=(20, 1)),
                             sg.Combo(values=list(indeks_nazwa.keys()), size=(15, 1),
-                                     key='Indeks:  ', default_value=list(indeks_nazwa.keys())[1])],
-                           [sg.Text('Numer seryjny: ', size=(15, 1)),
+                                     key='Indeks:  ', default_value=list(indeks_nazwa.keys())[3])],
+                           [sg.Text('Numer seryjny: ', size=(20, 1)),
                             sg.Input(size=(15, 1), justification='right',
                                      expand_x=True, key='Nr seryjny:  ')],
-                           [sg.Text('Operator: ', size=(15, 1)),
-                            sg.Combo(operators, size=(15, 1), default_value=operators[2],  # ident['Operator:  ']
-                                     key='Operator:  ')],
-                            [sg.Text('Operator2: ', size=(15, 1)),         
-                            sg.Combo(operators, size=(15, 1), default_value=operators[2],  # ident['Operator:  ']
-                                     key='Operator2:  ')],                                     
-
-                           [sg.Button('OK'), ]]).read(close=True)
+                           [sg.Text('Operator (test izolacji): ', size=(20, 1)),
+                            sg.Combo(list(operators.keys()), size=(15, 1), default_value='W.Sławiński',  # ident['Operator:  ']
+                                     key='Operator (test izolacji):  ')],
+                            [sg.Text('Operator (test systemu): ', size=(20, 1)),         
+                            sg.Combo(list(operators.keys()), size=(15, 1), default_value='W.Sławiński',  # ident['Operator:  ']
+                                     key='Operator (test systemu):  ')],
+                            [sg.HSep()],                                              
+                            [sg.Checkbox('Zatrzymaj po pierwszym negatywnym.', key='test_break', )],
+                            [sg.Checkbox('Ustaw ip Q1 na 192.168.5.120', key='ip', )],
+                            [sg.Checkbox('Raport sprawdzenia izolacji.', key='izolacja', )],
+                            [sg.Checkbox('Raport bez numerów prostowników.', key='no_serial', )],
+                            [sg.Push(),sg.Button('OK'), ]]).read(close=True)
 # 'Indeks:  ': '', 'Nr seryjny:  '
 if event == sg.WINDOW_CLOSED:
     sys.exit()
-if values['Indeks:  '] and values['Indeks:  '] != '0-000-0':
-    config = indeks_config[values['Indeks:  ']]
-    non_edit = True
-    ident['Indeks:  '], ident['Nr seryjny:  '], ident['Operator:  '] = values['Indeks:  '], values['Nr seryjny:  '], values['Operator:  ']
-    ident['Operator2:  '] = values['Operator2:  ']
-
+if values['test_break']:
+    stop_test = True
 else:
-    ident['Indeks:  '], ident['Nr seryjny:  '], ident['Operator:  '] = values['Indeks:  '], values['Nr seryjny:  '], values['Operator:  ']
-    ident['Operator2:  '] = values['Operator2:  ']
+    stop_test = False    
+if values['Indeks:  ']:
+    if values['Indeks:  '] != '0000-00000-00':
+        set_config(values['Indeks:  '])
+    ident['Indeks:  '], ident['Nr seryjny:  '], ident['Operator (test izolacji):  '] = values['Indeks:  '], values['Nr seryjny:  '], values['Operator (test izolacji):  ']
+    ident['Operator (test systemu):  '] = values['Operator (test systemu):  ']
+    stop_test, default_ip, bez_izolacji, bez_prostowników = values['test_break'], values['ip'], values['izolacja'], values['no_serial']
 
-main_window, conf_window = make_main_window(), None
+if ident['Indeks:  '] == '0000-00000-00':
+    event, values = make_conf_window()
+
+    if event == 'Zapisz':
+
+        # window.refresh()
+        for i in indeks_config['0000-00000-00']:
+            if i == '-UKB' or i == '-PROSTOWNIK':
+                indeks_config['0000-00000-00'][i] = check_number(values[i], i)
+            else:
+                indeks_config['0000-00000-00'][i] = int(values[i])
+        set_config('0000-00000-00')
+
+                # main_window['-ST-'].update(disabled=False)
+        
+        print(f'Konfiguracja zapisana.') 
+
+window = make_main_window()
 # Główna pętla aplikacji.
 try:
     while True:
         window, event, values = sg.read_all_windows()
         if event == sg.WIN_CLOSED or event == 'Exit':
-            if window == conf_window:
-                conf_window = None
-            elif window == main_window:
-                sf = modules.MZF()
-                if sf.self_test():
-                    sf.realy_switching('000')
-                del sf
-                """sb = modules.MZB()
-                if sb.self_test():
-                    sb.realy_switching('0000')
-                del sb"""
-                break
-            if window:
-                window.close()
-        elif event == '-KT-' and not conf_window:
-            """if exists('gfg.dat'):
-                shelve_file = shelve.open("gfg")
-                ident = shelve_file['ident']
-                shelve_file.close()"""
-            conf_window = make_conf_window()
-        elif event == '-SF-':
+            sf = modules.MZF()
+            if sf.self_test():
+                sf.realy_switching('000')
+            del sf
+            """sb = modules.MZB()
+            if sb.self_test():
+                sb.realy_switching('0000')
+            del sb"""
+            break
+        elif event == '-SF-': # selftest
             buttons_availability(window, False)
             window.perform_long_operation(self_test, '-RETURN_TRIGGER-')
         elif event == '-RETURN_TRIGGER-':
@@ -352,7 +348,7 @@ try:
                 window.refresh()
 
                 if selftest:
-                    sf = modules.MZF(w=main_window)
+                    sf = modules.MZF(w=window)
                     sf.realy_switching('111')
                     for i in range(3):
                         time.sleep(1)
@@ -362,10 +358,6 @@ try:
                     for i in range(6):
                         time.sleep(1)
                         window.refresh()
-                #q1ip = modules.search_q1_ip()
-                #if q1ip:
-                    
-                    #print('Komunikacja z Q1 OK')
 
                 q1 = modules.Q1() 
                 ident['Nr seryjny Q1:  '], ident['Wersja programu Q1:  '], \
@@ -375,17 +367,22 @@ try:
                 if ident['Indeks:  '] in indeks_nazwa.keys():
                     ident['Nazwa:  '] = indeks_nazwa[ident['Indeks:  ']][0]
                 for i in ident:
-                    main_window[i].update(i + ident[i])
+                    window[i].update(ident[i])
                 if int(ident['Wersja programu Q1:  '].split('b')[1]) >= 30:
                     pass
                 else:
-                    main_window['Wersja programu Q1:  '].update(text_color='red')
-                    print('Tester wymaga Q1 z wersją 1.0b30 lub wyższą.')                
-                if ident['Wersja konfiguracji Q1:  '] != indeks_nazwa[ident['Indeks:  ']][1] and ident['Indeks:  '] != '0-000-0':
-                    main_window['Wersja konfiguracji Q1:  '].update(text_color='red')
+                    window['Wersja programu Q1:  '].update(text_color='red')
+                    print('Tester wymaga Q1 z wersją 1.0b30 lub wyższą.')
+                    continue                
+                if ident['Wersja konfiguracji Q1:  '] != indeks_nazwa[ident['Indeks:  ']][1] and ident['Indeks:  '] != '0000-00000-00':
+                    window['Wersja konfiguracji Q1:  '].update(text_color='red')
                     print(f"Nieprawidłowa wersja konfiguracji -> {ident['Wersja konfiguracji Q1:  ']}")
                     print(f"Prawidłowa wersja konfiguracji    -> {indeks_nazwa[ident['Indeks:  ']][1]}")
                     test_button_disable = True
+                    continue
+                    #buttons_availability(window, False)
+                    #window.refresh()
+                    
                 else:
                     print(f"Wersja konfiguracji Q1 -> {indeks_nazwa[ident['Indeks:  ']][1]} OK")
                     
@@ -395,85 +392,15 @@ try:
                     #window['-OUTPUT-'].update('Self test error.\n', text_color_for_value='red', append=True)
             else:
                 window['-OUTPUT-'].update('Self test error.\n', text_color_for_value='red', append=True)
-            for j in test_keys:
-                if not config[j]:
-                    window[j + 'P'].update(text_color='gray')
-                else:
-                    window[j + 'P'].update(text_color='white')
+
             buttons_availability(window, True)
-        elif event == 'Zapisz':
-            test_button_disable = False
-            # window.refresh()
-            for i in config:
-                if i == '-UKB' or i == '-PROSTOWNIK':
-                    config[i] = check_number(values[i], i)
-                else:
-                    config[i] = int(values[i])
-            if values['test_break']:
-                stop_test = True
-            else:
-                stop_test = False
 
-            q1 = modules.Q1()
-            ident['Nr seryjny Q1:  '], ident['Wersja programu Q1:  '],\
-                ident['Wersja konfiguracji Q1:  '] = q1.ident_inf()
-
-            ident['Data:  '] = datetime.now().strftime("%d/%m/%Y")
-            if int(ident['Wersja programu Q1:  '].split('b')[1]) >= 30:
-                pass
-            else:
-                main_window['Wersja programu Q1:  '].update(text_color='red')
-                # ident_value['-DATA'] = ''
-                print('Tester wymaga Q1 z wersją 1.0b30 lub wyższą.')
-                test_button_disable = True
-                window.close()
- 
-            """if len(values['Nr seryjny:  ']) > 0 and ' ' in values['Nr seryjny:  ']:
-                ident['Indeks:  '], ident['Nr seryjny:  '] = values['Nr seryjny:  '].strip().split(' ')"""
-            if ident['Indeks:  '] in indeks_nazwa.keys():
-                ident['Nazwa:  '] = indeks_nazwa[ident['Indeks:  ']][0]
-                main_window['Indeks:  '].update(text_color='white')
-                if ident['Wersja konfiguracji Q1:  '] != indeks_nazwa[ident['Indeks:  ']][1] and ident['Indeks:  '] != '0-000-0':
-                    main_window['Wersja konfiguracji Q1:  '].update(text_color='red')
-                    print(f"Nieprawidłowa wersja konfiguracji -> {ident['Wersja konfiguracji Q1:  ']}")
-                    print(f"Prawidłowa wersja konfiguracji    -> {indeks_nazwa[ident['Indeks:  ']][1]}")
-                    test_button_disable = True
-                    window.close()
-                    # main_window['-ST-'].update(disabled=False)
-            else:
-                main_window['Indeks:  '].update(text_color='red')
-                ident['Nazwa:  '] = 'Unidentified'
-                print(f"Tester nie obsługuje wyrobu o indeksie:  {ident['Indeks:  ']}")
-                test_button_disable = True
-                window.close()
-            """else:
-                window['Nr seryjny:  '].update(text_color='red')
-                print('Nieprawidłowe format (oczekiwany:  indeks spacja numer seryjny)')"""
-            del q1
-            if all(ident.values()):
-                # for i in ip:  print('{}{: 10}->{}'.format('Adres ip ', i.strip('-'), ip[i]))
-
-                """shelve_file = shelve.open("gfg")
-                shelve_file['ident'] = ident
-                shelve_file.close()"""
-                # for i in ident_name:  window[i].update(ident_name[i]+ident_value[i])
-                for i in ident:
-                    main_window[i].update(i + ident[i])
-                for j in test_keys:
-                    if not config[j]:
-                        main_window[j + 'P'].update(text_color='gray')
-                    else:
-                        main_window[j + 'P'].update(text_color='white')
-                window.close()
-            main_window['-ST-'].update(disabled=test_button_disable)
-            if not test_button_disable:
-                print(f'Konfiguracja zapisana.')
-        elif event == '-ST-':
+        elif event == '-ST-': #wykonanie testów
             buttons_availability(window, False)
             test_all()
         elif event == '-THREAD DONE-':
             buttons_availability(window, True)
-        elif event in ('f1', 'f2', 'f3'):
+        elif event in ('f1', 'f2', 'f3'): #fazy on off
             command = ['x', 'x', 'x']
             if values[event]:
                 command[int(event[1]) - 1] = '1'
@@ -486,7 +413,7 @@ try:
             else:
                 window[event].update(value=False)
             del sf
-        elif event in ('b1', 'b2', 'b3', 'b4'):
+        elif event in ('b1', 'b2', 'b3', 'b4'): #baterie odłaczanie podłączanie
             pass
             """command = ['x', 'x', 'x', 'x']
             if values[event]:
@@ -502,7 +429,7 @@ try:
             del sb"""
             # print('Brak ip MZF')
         elif event == '-RT-':
-            raport.save_pdf(json_file, tuple(ident.keys()), tuple(tests[i].test_name for i in test_keys),
+            raport.save_pdf(json_file, tuple(ident.keys()), tuple(tests[i].test_name for i in tuple(tests.keys())),
                             name='raporty\\' + ident['Nazwa:  '])
             print('Raport zapisany')
 except Exception as e:
