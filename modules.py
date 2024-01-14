@@ -9,7 +9,7 @@ import logging
 import sys
 import time
 
-
+read_community, write_community = None, None
 # logger = logging.getLogger('q1  ')
 """def search_q1_ip():
     # Odnajduje ip sterownika q1
@@ -85,9 +85,11 @@ class Q1:
         'ident.identFirmwareVersion': '.1.3.6.1.4.1.32038.2.2.1.2.0',
         'ident.identSerialNumber': '.1.3.6.1.4.1.32038.2.2.1.4.0',
         'ident.identConfigurationVersion': '.1.3.6.1.4.1.32038.2.2.1.7.0',
-        'systemDC.rectNrOfFound': '.1.3.6.1.4.1.32038.2.2.2.12.0'}
+        'systemDC.rectNrOfFound': '.1.3.6.1.4.1.32038.2.2.2.12.0',
+        'snmpRCom': '.1.3.6.1.4.1.32038.2.2.6.4.1.0',
+        'snmpWCom': '.1.3.6.1.4.1.32038.2.2.6.4.2.0'}
 
-    q1_ip = 'start'
+
 
     def __init__(self, ip='192.168.1.108', w=None): # ip='192.168.1.108'
         self.ip = ip
@@ -95,16 +97,14 @@ class Q1:
         self.registers_values = {}
         self.alarmy = []
         self.logger = logging.getLogger('q1')
+        self.read_community = 'public'
+        self.write_community = 'private'
+        #print(self.read_community, self.write_community)
+        #self.get_community()
+        #print(self.read_community, self.write_community)
 
-    """def self_test(self):
-        # Sprawdza czy moduł odpowiada
-        if ping(self.ip):
-            if self.snmp_querry(self.oids_name['ident.identManufacturer']) == '\"TELZAS\"':
-                return True
-            else:
-                return False
-        else:
-            return False"""
+
+
     def self_test(self):
         """Sprawdza czy moduł odpowiada"""
         return ping(self.ip)
@@ -114,6 +114,7 @@ class Q1:
                                 self.oids_name['ident.identConfigurationVersion'])
         resp = resp.strip('\"').split('\"\"')
         return resp
+
 
     def get_rectifier_serial(self, rect_number):
         """Odczytuje numery seryjne prostowników."""
@@ -141,12 +142,12 @@ class Q1:
     def snmp_querry(self, *oid, value='x'):
         """Odczyt i zapis po SNMP zmiennych w sterwniku Q1"""
         if value == 'x':
-            command = ['snmpget', '-v', '2c', '-O', 'vq', '-c', 'public', '-r', '3', '-t', '1', '-L', 'n', self.ip, *oid]
+            command = ['snmpget', '-v', '2c', '-O', 'vq', '-c', self.read_community, '-r', '4', '-t', '1', '-L', 'n', self.ip, *oid]
         elif value == '192.168.5.120':
-            command = ['snmpset', '-v', '2c', '-O', 'vq', '-c', 'public', '-r', '3', '-t', '1', '-L', 'n', self.ip,
+            command = ['snmpset', '-v', '2c', '-O', 'vq', '-c', self.write_community, '-r', '4', '-t', '1', '-L', 'n', self.ip,
                        *oid, 's', value]        
         else:
-            command = ['snmpset', '-v', '2c', '-O', 'vq', '-c', 'public', '-r', '3', '-t', '1', '-L', 'n', self.ip,
+            command = ['snmpset', '-v', '2c', '-O', 'vq', '-c', self.write_community, '-r', '4', '-t', '1', '-L', 'n', self.ip,
                        *oid, 'i', str(value)]
                
         output = subprocess.run(command, capture_output=True, text=True)
@@ -245,7 +246,7 @@ class Q1:
 
 class LOAD:
     """Sterowanie oprnica DC"""
-    def __init__(self, ip='192.168.1.103', port=1001):  # PLI-13460
+    def __init__(self, ip='192.168.1.109', port=1001):  # PLI-13460 109: lab 103: RM
         self.ip = ip
         self.port = port
         # self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -684,8 +685,15 @@ if __name__ == "__main__":
     time.sleep(5)
     print(mww.odczyt(2))"""
     #mww = MWW()
-    sterownik = Q1(ip='192.168.1.108')
-    print(sterownik.get_rectifier_serial(5))
+    #sterownik = Q1(ip='192.168.1.108')
+    #mww = MWW()
+    #print(mww.odczyt(0))
+    #print(mww.send_packet('0'))
+    #oids = tuple(['.1.3.6.1.4.1.32038.2.2.16.2.1.' + str(15 + i) + '.0' for i in range(3)])
+    q1 = Q1()
+    #print(q1.snmp_querry(*oids).split('\n'))
+    q1.self_test_name()
+    #print(sterownik.get_rectifier_serial(5))
     #mww.send_packet('2,2,0')
     #time.sleep(5)
     #print('alarm')

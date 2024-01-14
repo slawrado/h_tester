@@ -210,7 +210,7 @@ class TestBocznika:
         self.get_modules()
         # load = opornica_dc.Opornica_dc(ip=self.opornica_ip)
         stycznik = TestStycznika()
-        obc = 2.5
+        obc = 5.0
         start = datetime.now()
         self.logger.info('Test boczników: podaje obciążenie, odłącza zasilanie i sprawdza poprawność kierunku'
                          ' i wartości prądu baterii')
@@ -316,7 +316,7 @@ class TestBezpiecznikaBat:
     test_number = 13
     test_key = '-BAT-FUSE-MOD'
     test_name = 'Test alarmu bezpiecznika baterii'
-    config_name = 'Bezpiecznik baterii'
+    config_name = 'Alarm bezpiecznika baterii'
     config_range = list(range(5))
     required_modules = (modules.Q1, modules.MWW)
 
@@ -514,6 +514,8 @@ class TestInput:
             if i == 1:
                 adres += 1
                 oid = '.1.3.6.1.4.1.32038.2.2.10.18.1.2.1'
+            oid = '.1.3.6.1.4.1.32038.2.2.10.18.1.2.1' # tymczasowo dla drugiej mwe gsmr    
+            #print('adres:',adres,'oid:',oid)    
             progress = 0
             d = str(adres) + ',255'
             r = self.mww.send_packet(d)  # reset wyjść MWW testera.
@@ -545,15 +547,15 @@ class TestInput:
         self.mww.send_packet(str(adres) + ',255')  # reset wyjść MWW testera
         stop = datetime.now()
         printr(
-            'Koniec {}: {:02d}:{:02d}:{:02d} Czas wykonania {}'.format(stop.hour, stop.minute, stop.second,
+            'Koniec {}: {:02d}:{:02d}:{:02d} Czas wykonania {}'.format(self.test_name, stop.hour, stop.minute, stop.second,
             sec2min((stop - start).total_seconds())), self.w, self.logger)
         if self.w:
             self.w['progress'].update_bar(0, 0)
         return True
 
 
-@register
-class TestOutputQ1:
+
+class TestOutputQ1_old:
     """Sprawdza wyjscia Q1"""
     test_number = 2
     test_key = '-OUTPUT-Q1'
@@ -569,6 +571,7 @@ class TestOutputQ1:
         self.w = w
         self.mww = None
         self.number = number
+        #self.offset = 0
 
     def get_modules(self):
         """Tworzy obiekty modułów używanych przy wykonywaniu testu"""
@@ -594,14 +597,15 @@ class TestOutputQ1:
         printr('Start testu wyjść {}: {:02d}:{:02d}:{:02d}'.format(self.name, start.hour, start.minute, start.second), self.w, self.logger)
         printr(f'Liczba zadeklarowanych wyjść: {self.number}', self.w, self.logger)
         # print('{:08b}'.format(int(self.i2c.send_packet(str(nr)).decode())))
-        set_realy = tuple([j + 2 if self.adres == 0 else j + 10 for j in range(
-            self.number)])  # generuje klucze na podstawie liczby wyjśc alarmowych Q1 lub MWY
+        set_realy = tuple([j + 2 if self.adres == 0 else j + 10 for j in range(self.number)])  # generuje klucze na podstawie liczby wyjśc alarmowych Q1 lub MWY
+        print('set_realy',set_realy)
         realy_on = {17: 128, 16: 64, 15: 32, 14: 16, 13: 8, 12: 4, 11: 2, 10: 1, 5: 8, 4: 4, 3: 2,
                     2: 1}  # Klucz załączenie przekaźnika 10-17: MWY, 2-5: Q1
         mask = 0
         # if progress: self.w[progress].update(max_value=number_outputs)
         for i in set_realy:
             mask += realy_on[i]
+        print('mask',mask)    
         self.q1.snmp_querry('.1.3.6.1.4.1.32038.2.2.17.2.0', value=0)  # wyzerowanie stanu przekaźników
         time.sleep(2)
         pb = 0  # progress bar
@@ -609,13 +613,16 @@ class TestOutputQ1:
             pb += 1
             self.q1.snmp_querry('.1.3.6.1.4.1.32038.2.2.17.2.0', value=i)
             time.sleep(2)
-            r = int(self.mww.send_packet(str(self.adres))) & mask
+            m = self.mww.send_packet(str(self.adres))
+            print('m',m)
+            r = int(m) & mask
+            print('r',r, 'realy_on[i]', realy_on[i])
             if r == realy_on[i]:
                 printr('Wyjście: {} OK'.format(i - self.offset), self.w, self.logger)
                 self.logger.info('({}) Wyjście: {} OK {:08b}'.format(self.number, i - self.offset, r))
             else:
                 printr('Wyjście: {} Error'.format(i - self.offset), self.w, self.logger)
-                logger.warning('({}) Wyjście: {} Error  {:08b}'.format(self.number, i - self.offset, r))
+                logger.warning('({}) Wyjście: {} Error  {:8b}'.format(self.number, i - self.offset, r))
                 stop = datetime.now()
                 printr(
                     'Koniec testu wyjść {}: {:02d}:{:02d}:{:02d} Czas testu {}'.format(self.name, stop.hour, stop.minute,
@@ -632,7 +639,87 @@ class TestOutputQ1:
         if self.w:
             self.w['progress'].update_bar(0, 0)
         return True
+@register        
+class TestOutputQ1:
+    """Sprawdza wyjscia Q1"""
+    test_number = 2
+    test_key = '-OUTPUT-Q1'
+    test_name = 'Test wyjść (Q1)'
+    config_name = 'Wyjścia (Q1)'
+    config_range = list(range(5))
+    name, adres, offset = 'Q1', 0, 1
+    required_modules = (modules.Q1, modules.MWW)
 
+    def __init__(self, number=0, w=None):
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.q1 = None
+        self.w = w
+        self.mww = None
+        self.number = number
+        self.realy_on = {5: 247, 4: 251, 3: 253, 2: 254}  # Klucze załączenia przekaźników 2-5: Q1, warości stan mwe testera
+        #self.offset = 0
+
+    def get_modules(self):
+        """Tworzy obiekty modułów używanych przy wykonywaniu testu"""
+        if self.number:
+            self.q1 = modules.Q1()
+            self.mww = modules.MWW()
+
+    def test(self):
+        # popen('snmpset -v2c -Ovq -cprivate -r3 -t1 -Ln '+self.q1_ip+' .1.3.6.1.4.1.32038.2.2.17.2.0 i '+str(i))
+        self.get_modules()
+        """if key_gui == '-OUTPUT-MWY':
+            name, adres, offset = 'MWY', 1, 9
+        elif key_gui == '-OUTPUT-Q1':
+            name, adres, offset = 'Q1', 0, 1
+        else:
+            print('Nieznany typ wyjść')
+            return False"""
+
+        start = datetime.now()
+        self.logger.info(
+            'Test wyjść załącza przekaźniki wyjściowe {} i sprawdza zwarcie kolejnych wyjść alarmowych'.format(
+                self.name))
+        printr('Start testu wyjść {}: {:02d}:{:02d}:{:02d}'.format(self.name, start.hour, start.minute, start.second), self.w, self.logger)
+        printr(f'Liczba zadeklarowanych wyjść: {self.number}', self.w, self.logger)
+        # print('{:08b}'.format(int(self.i2c.send_packet(str(nr)).decode())))
+        set_realy = tuple([j + 2 for j in range(self.number)])  # generuje klucze na podstawie liczby wyjśc alarmowych Q1 lub MWY
+        
+        
+        if self.mww.odczyt(self.adres) != '255':
+            printr('Przed rozpoczęciem testu wyjścia powininy być stanie bezalarmowym', self.w, self.logger, color='red')
+            return False
+
+        pb = 0  # progress bar
+        for i in set_realy:
+            self.q1.snmp_querry('.1.3.6.1.4.1.32038.2.2.17.2.0', value=0)  # wyzerowanie stanu przekaźników
+            time.sleep(2)            
+            pb += 1
+            self.q1.snmp_querry('.1.3.6.1.4.1.32038.2.2.17.2.0', value=i)
+            time.sleep(2)
+            if self.mww.send_packet(str(self.adres)) == str(self.realy_on[i]):
+                printr('Wyjście: {} OK'.format(i - self.offset), self.w, self.logger)
+                self.logger.info('({}) Wyjście: {} OK {:08b}'.format(self.number, i - self.offset, self.realy_on[i]))
+            else:
+                printr('Wyjście: {} Error'.format(i - self.offset), self.w, self.logger)
+                logger.warning('({}) Wyjście: {} Error  {:8b}'.format(self.number, i - self.offset, self.realy_on[i]))
+                stop = datetime.now()
+                printr(
+                    'Koniec testu wyjść {}: {:02d}:{:02d}:{:02d} Czas testu {}'.format(self.name, stop.hour, stop.minute,
+                                                                                       stop.second, sec2min(
+                            (stop - start).total_seconds())), self.w, self.logger)
+                return False
+            if self.w:
+                self.w['progress'].update_bar(pb, len(set_realy))
+                time.sleep(1)
+        self.q1.snmp_querry('.1.3.6.1.4.1.32038.2.2.17.2.0', value=0)  # wyzerowanie stanu przekaźników
+        time.sleep(2)
+        stop = datetime.now()
+        printr('Koniec testu wyjść {}: {:02d}:{:02d}:{:02d} Czas testu {}'.format(self.name, stop.hour, stop.minute,
+                stop.second, sec2min((stop - start).total_seconds())), self.w, self.logger)
+        if self.w:
+            self.w['progress'].update_bar(0, 0)
+        return True
 @register
 class TestOutputMWY(TestOutputQ1):
     """Sprawdza wyjscia Q1"""
@@ -642,11 +729,17 @@ class TestOutputMWY(TestOutputQ1):
     config_name = 'Wyjścia (MWY)'
     config_range = list(range(9))
     name, adres, offset = 'MWY', 1, 9
-
+    def __init__(self, number=0, w=None):
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.q1 = None
+        self.w = w
+        self.mww = None
+        self.number = number
+        self.realy_on = {17: 127, 16: 191, 15: 223, 14: 239, 13: 247, 12: 251, 11: 253, 10: 254} # Klucze załączenie przekaźnika 10-17: MWY, wartości stan mwe testera
 @register
 class TestUkb:
     """Sprawdza działanie płytki UKB"""
-    test_number = 1
+    test_number = 9
     test_key = '-UKB'
     test_name = 'Test kontroli zabezpieczeń odbiorów'
     config_name = 'Zabezpieczenia odbiorów'
@@ -873,7 +966,7 @@ class TestCzujnikowTemp:
 
 @register
 class TestBaterryFuses:
-    """Sprawdza działanie płytki UKB"""
+    """Sprawdza zadziałanie alarmów przepalenia bezpieczników baterii"""
     test_number = 8
     test_key = '-BAT-FUSE'
     test_name = 'Test kontroli zabezpieczeń baterii'
@@ -900,8 +993,7 @@ class TestBaterryFuses:
             self.bat.realy_switching('1111')
         start = datetime.now()
         self.logger.info('Test: poprawność okablowania nadzoru przepalenia bezpieczników baterii')
-        printr(
-            'Start testu bezpieczników baterii: {:02d}:{:02d}:{:02d}'.format(start.hour, start.minute, start.second), self.w, self.logger)
+        printr('Start testu bezpieczników baterii: {:02d}:{:02d}:{:02d}'.format(start.hour, start.minute, start.second), self.w, self.logger)
         printr(f'Liczba zadeklarowanych bezpieczników baterii: {self.number}', self.w, self.logger)
         printr('Zrzuć wszystkie zabezpieczenia bateryjne', self.w, self.logger, color='blue')
 
@@ -946,6 +1038,8 @@ class TestBaterryFuses:
             oids_list.append(self.q1.oids_name['alarms.alarmsBatteryTable.alarmsBatteryEntry.alarmsBattFuse'] + str(i))
             sb += '0'  # stan alarmu zabezpieczenia baterii (do porównania z odczytem z q1)
         to_long = 12
+        snmp = self.q1.snmp_querry(*tuple(oids_list))
+        print(sb, 'snmp:',snmp)
         while sb != self.q1.snmp_querry(*tuple(oids_list)):
             snmp = self.q1.snmp_querry(*tuple(oids_list))
             self.logger.info('Stan zabezpieczeń baterii: {}'.format(snmp))
@@ -970,9 +1064,9 @@ class TestBaterryFuses:
 class TestRectifier:
 
     """Sprawdza pracę prostowników"""
-    test_number = 9
+    test_number = 1
     test_key = '-PROSTOWNIK'
-    test_name = 'Test prostowników (okablowanie)'
+    test_name = 'Test prostowników'
     config_name = 'Prostowniki'
     config_range = None
     required_modules = (modules.Q1, modules.MZF)
@@ -984,22 +1078,18 @@ class TestRectifier:
         self.fazy = None
         self.w = w
         self.number = number
-
+        self.wynik = False
+        
     def get_modules(self):
         """Tworzy obiekty modułów używanych przy wykonywaniu testu"""
         if self.number:
             self.q1 = modules.Q1()
             self.fazy = modules.MZF()
-
-    def test(self):
-        self.get_modules()
-        start = datetime.now()
-        self.logger.info(
-            'Test: wyzerowuje tablicę prostowników, konfiguruje pozycję i przydział faz'
-            ' i weryfikuje wprowadzone ustawienia')
-        printr('Start testu prostowników: {:02d}:{:02d}:{:02d}'.
-               format(start.hour, start.minute, start.second), self.w, self.logger)
-        printr(f'Liczba zadeklarowanych prostowników: {self.number}', self.w, self.logger)
+        if self.fazy.realy_switching('xxx') != '111':
+            self.logger.info('Załączam wszystkie fazy')
+            self.fazy.realy_switching('111')
+            time.sleep(6)
+    def make_phase_order(self):        
         printr('Wyjmij wszystkie prostowniki z siłowni', self.w, self.logger, color='blue')
         to_long = 12
         while self.q1.snmp_querry('.1.3.6.1.4.1.32038.2.2.2.12.0') != '0':
@@ -1013,8 +1103,14 @@ class TestRectifier:
         if self.q1.snmp_querry('.1.3.6.1.4.1.32038.2.2.2.13.0') != '0':
             # odblokowanie zerowania liczby prostowników i ustawienia przydziału faz przez snmp
             self.q1.snmp_querry('.1.3.6.1.4.1.32038.2.2.13.1.0', value=3637)
+            time.sleep(0.5)
             # zerowanie tablicy prostowników
             self.q1.snmp_querry('.1.3.6.1.4.1.32038.2.2.2.13.0', value=0)
+            time.sleep(0.5)
+            rectNrOfSet = self.q1.snmp_querry('.1.3.6.1.4.1.32038.2.2.2.13.0')
+            if rectNrOfSet != '0':
+                printr(f'Brak zerowania tablicy prostowników.  rectNrOfSet = {rectNrOfSet}',self.w, self.logger, color='red')
+                return False
         for i in range(1, self.number + 1):
             if self.w:
                 self.w['progress'].update_bar(i, self.number * 3)
@@ -1033,14 +1129,63 @@ class TestRectifier:
         for i in range(self.number):  # przydział faz
             faza = i % 3 + 1
             if self.q1.snmp_querry('.1.3.6.1.4.1.32038.2.2.2.2.1.23.' + str(i), value=faza) == str(faza):
-                printr(f'OK, przydział prostownika {i + 1} do fazy {faza}', self.w, self.logger)
+                printr(f'Przydział prostownika {i + 1} do fazy {faza} OK', self.w, self.logger)
             else:
-                printr(f'Error, przydział prostownika {i + 1} do fazy {faza} nieudany', self.w, self.logger, color='red')
-            
-        #time.sleep(2)    
-        #printr('OK, przydział faz wykonany', self.w, self.logger)
-        
-        """for i in range(self.number):
+                printr(f'Przydział prostownika {i + 1} do fazy {faza} nieudany', self.w, self.logger, color='red')
+                return False   
+        printr('OK, przydział faz wykonany', self.w, self.logger)
+        return True
+
+    def check_phase(self):
+        printr('Sprawdzenie przydziału faz.', self.w, self.logger)
+        if self.fazy.realy_switching('xxx') != '111':
+            self.logger.info('Załączam wszystkie fazy')
+            self.fazy.realy_switching('111')
+            time.sleep(8)
+        else:
+            self.logger.info('Wszystkie fazy załaczone')
+        if self.number == 1:
+            liczba_faz = 1
+        elif self.number == 2:
+            liczba_faz = 2
+        else:
+            liczba_faz = 3
+        oids = tuple(['.1.3.6.1.4.1.32038.2.2.16.2.1.' + str(15 + i) + '.0' for i in range(liczba_faz)])
+        fazy = []
+        for i in range(liczba_faz): fazy.append('1')
+        self.logger.info(fazy)
+
+        for i in range(liczba_faz):
+            self.logger.info('Wyłączenie fazy {}'.format(i + 1))
+            fazy[i] = '0'
+            self.logger.info(fazy)
+            # print('fazy',fazy)
+            inverted_logic = ['0' if i == '1' else '1' for i in fazy]  # wcelu porównania z snmp
+            inverted_logic = ''.join(inverted_logic)
+            set_fazy = ''.join(fazy)
+            for j in range(3 - liczba_faz): set_fazy += 'x'  # gdy liczba faz mniejsza niż trzy
+            self.fazy.realy_switching(set_fazy)
+            #print('inverted_logic:',inverted_logic)
+            time.sleep(5)
+            q1_stan_faz = self.q1.snmp_querry(*oids)
+            #print('Alarm faz snmp:', q1_stan_faz, datetime.now())
+            if q1_stan_faz == inverted_logic:
+                printr('Zanik i alarm fazy: {} OK'.format(i + 1), self.w, self.logger)
+                if self.w:
+                    self.w['progress'].update_bar(i + 1 + self.number * 2, self.number * 3)
+                    time.sleep(1)
+                fazy[i] = '1'    
+            else:
+                printr('Zanik i alarm fazy: {} Error'.format(i + 1), self.w, self.logger, color='red')
+                import sys
+                sys.exit()
+                #return False 
+            self.logger.info('Załączam wszystkie fazy')
+            self.fazy.realy_switching('111')
+            time.sleep(5) 
+        return True                   
+    def alarm_prostownika(self):
+        for i in range(self.number):
             if self.w:
                 self.w['progress'].update_bar(i + self.number + 1, self.number * 3)
             printr(f'Zablokuj wntylator prostownika na pozycji numer: {i + 1}', self.w, self.logger,  color='blue')
@@ -1069,74 +1214,31 @@ class TestRectifier:
                        self.w, self.logger, color='red')
                 return False
             w = self.q1.snmp_querry(*oids)
-        printr('OK, wentylatory odblokowane.', self.w, self.logger)"""
-        printr('Sprawdzenie przydziału faz.', self.w, self.logger)
-        if self.fazy.realy_switching('xxx') != '111':
-            self.logger.info('Załączam wszystkie fazy')
-            self.fazy.realy_switching('111')
-            time.sleep(10)
-        else:
-            self.logger.info('Wszystkie fazy załaczone')
-        if self.number == 1:
-            liczba_faz = 1
-        elif self.number == 2:
-            liczba_faz = 2
-        else:
-            liczba_faz = 3
-        oids = tuple(['.1.3.6.1.4.1.32038.2.2.16.2.1.' + str(15 + i) + '.0' for i in range(liczba_faz)])
+        printr('OK, wentylatory odblokowane.', self.w, self.logger)
+        return True
+                                     
+    def test(self):
 
-        fazy = []
-        for i in range(liczba_faz): fazy.append('1')
-        self.logger.info(fazy)
-
-        for i in range(liczba_faz):
-            self.logger.info('Wyłączenie fazy {}'.format(i + 1))
-            fazy[i] = '0'
-            self.logger.info(fazy)
-            # print('fazy',fazy)
-            inverted_logic = ['0' if i == '1' else '1' for i in fazy]  # wcelu porównania z snmp
-            inverted_logic = ''.join(inverted_logic)
-            set_fazy = ''.join(fazy)
-            for j in range(3 - liczba_faz): set_fazy += 'x'  # gdy liczba faz mniejsza niż trzy
-            self.fazy.realy_switching(set_fazy)
-            # print('inverted_logic',inverted_logic)
-            time.sleep(7)
-            print('stan faz odczytany z snmp',self.q1.snmp_querry(*oids).split('\n'))
-            if self.q1.snmp_querry(*oids) == inverted_logic:
-                printr('Zanik i alarm fazy: {} OK'.format(i + 1), self.w, self.logger)
-                if self.w:
-                    self.w['progress'].update_bar(i + 1 + self.number * 2, self.number * 3)
-                    time.sleep(1)
-            else:
-                printr('Zanik i alarm fazy: {} Error'.format(i + 1), self.w, self.logger, color='red')
-                self.logger.info('Załączam wszystkie fazy')
-                self.fazy.realy_switching('111')
-                return False
+        self.get_modules()
+        start = datetime.now()
+        self.logger.info(
+            'Test: wyzerowuje tablicę prostowników, konfiguruje pozycję i przydział faz'
+            ' i weryfikuje wprowadzone ustawienia')
+        printr('Start testu prostowników: {:02d}:{:02d}:{:02d}'.
+               format(start.hour, start.minute, start.second), self.w, self.logger)
+        printr(f'Liczba zadeklarowanych prostowników: {self.number}', self.w, self.logger)        
+        if self.make_phase_order() and self.alarm_prostownika() and self.check_phase():
+            self.wynik = True
         self.logger.info('Załączam wszystkie fazy')
         self.fazy.realy_switching('111')
-        printr('Wyjmij wszystkie prostowniki z siłowni', self.w, self.logger, color='blue')
-        to_long = 12
-        while self.q1.snmp_querry('.1.3.6.1.4.1.32038.2.2.2.12.0') != '0':
-            self.logger.info('Liczba prostowników: {}'.format(self.q1.snmp_querry('.1.3.6.1.4.1.32038.2.2.2.12.0')))
-            time.sleep(5)
-            to_long -= 1
-            if to_long < 0:
-                printr('Zbyt długi czas oczekiwnia na wyjęcie prostowników (lub brak wykrycia braku)',
-                       self.w, self.logger, color='red')
-                return False
-        if self.q1.snmp_querry('.1.3.6.1.4.1.32038.2.2.2.13.0') != '0':
-            # odblokowanie zerowania liczby prostowników i ustawienia przydziału faz przez snmp
-            self.q1.snmp_querry('.1.3.6.1.4.1.32038.2.2.13.1.0', value=3637)
-            # zerowanie tablicy prostowników
-            self.q1.snmp_querry('.1.3.6.1.4.1.32038.2.2.2.13.0', value=0)
-            print('Zerowania liczby prostowników')    
+        time.sleep(5)         
         stop = datetime.now()
         printr('Koniec testu prostowników: {:02d}:{:02d}:{:02d} Czas wykonania {}'.
                format(stop.hour, stop.minute, stop.second, sec2min((stop - start).total_seconds())),
                self.w, self.logger)
         if self.w:
             self.w['progress'].update_bar(0, 0)
-        return True
+        return self.wynik
 
 @register
 class TestMZK:
@@ -1224,11 +1326,11 @@ class TestMZK:
             self.w['progress'].update_bar(0,0)
         return True
 
-"""print(test_classes)
+# print(test_classes)
 test_classes = sorted([x for  x in test_classes], key=lambda x: x.test_number)
-print(test_classes)
-for i in test_classes:
-    print(i.__name__, i.test_number, i.test_key, i.test_name, i.config_name)"""
+# print(test_classes)
+#for i in test_classes:
+#    print(i.__name__, i.test_number, i.test_key, i.test_name, i.config_name)
 
 if __name__ == "__main__":
     """t = TestRs485(1)
@@ -1264,6 +1366,21 @@ if __name__ == "__main__":
     mzk_sensor = TestCzujnikowMZK(number=1)
     mzk_sensor.get_modules()
     mzk_sensor.test()"""
+
+
+    #test_battery_fuses = TestBaterryFuses(number=3)
+    #test_battery_fuses.test()
+    #test = TestBocznika(number=1)
+    #print(test_out_q1.mww.send_packet(str(test_out_q1.adres)))
+    #test.get_modules()
+    #time.sleep(40)
+    #test.check_phase()
+    #test = TestUkb(number=8)
+    #test = TestBaterryFuses(number=4)
+    test = TestInput(number=8)
+    test.test()
+
+
  
 
 

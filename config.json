@@ -1,0 +1,90 @@
+{
+    "9070-00696-28": {
+        "name": [
+            "Modernizacja Benning",
+            "OS-000310-002E"
+        ],
+        "-UKB": 1,
+        "-OUTPUT-Q1": 0,
+        "-OUTPUT-MWY": 7,
+        "-INPUTS": 0,
+        "-STYCZNIK": 2,
+        "-BOCZNIK": 1,
+        "-CZUJNIK-TEMP": 1,
+        "-BAT-FUSE": 0,
+        "-PROSTOWNIK": 4,
+        "-MZK": 0,
+        "-RS485": 0,
+        "-ASYM": 1,
+        "-BAT-FUSE-MOD": 1,
+        "-CZUJNIK-MZK": 0
+    },
+    "9070-00696-22": {
+        "name": [
+            "Modernizacja Benning",
+            "OS-000310-002E"
+        ],
+        "-UKB": 1,
+        "-OUTPUT-Q1": 0,
+        "-OUTPUT-MWY": 7,
+        "-INPUTS": 0,
+        "-STYCZNIK": 2,
+        "-BOCZNIK": 1,
+        "-CZUJNIK-TEMP": 1,
+        "-BAT-FUSE": 0,
+        "-PROSTOWNIK": 4,
+        "-MZK": 0,
+        "-RS485": 0,
+        "-ASYM": 1,
+        "-BAT-FUSE-MOD": 1,
+        "-CZUJNIK-MZK": 0
+    },
+    "9030-00328": {
+        "name": [
+            "H-system",
+            "OS-000350-001C"
+        ],
+        "-UKB": 8,
+        "-OUTPUT-Q1": 4,
+        "-OUTPUT-MWY": 0,
+        "-INPUTS": 8,
+        "-STYCZNIK": 3,
+        "-BOCZNIK": 1,
+        "-CZUJNIK-TEMP": 1,
+        "-BAT-FUSE": 4,
+        "-PROSTOWNIK": 5,
+        "-MZK": 0,
+        "-RS485": 0,
+        "-ASYM": 0,
+        "-BAT-FUSE-MOD": 0,
+        "-CZUJNIK-MZK": 0
+    },
+    "0000-00000-00": {
+        "name": [
+            "Custom test",
+            "OS-000309-001E"
+        ],
+        "-UKB": 0,
+        "-OUTPUT-Q1": 0,
+        "-OUTPUT-MWY": 0,
+        "-INPUTS": 0,
+        "-STYCZNIK": 0,
+        "-BOCZNIK": 0,
+        "-CZUJNIK-TEMP": 0,
+        "-BAT-FUSE": 0,
+        "-PROSTOWNIK": 0,
+        "-MZK": 0,
+        "-RS485": 0,
+        "-ASYM": 0,
+        "-BAT-FUSE-MOD": 0,
+        "-CZUJNIK-MZK": 0
+    },
+    "operators": {
+        "A.Salamon": "",
+        "M.Dżygun": "",
+        "W.Sławiński": "177/E/0832/19",
+        "Z.Batogowski": "177/E/0709/23",
+        "W.Tomczyk": "177/E/0708/23",
+        "K.Hamann": "177/E/0706/23"
+    }
+}

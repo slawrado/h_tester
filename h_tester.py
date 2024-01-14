@@ -11,12 +11,16 @@ import raport.raport as raport
 import modules
 import testy
 import threading
-# 192.168.1.122
- #('-UKB', '-OUTPUT-Q1', '-OUTPUT-MWY', '-INPUTS', '-STYCZNIK', '-BOCZNIK', '-CZUJNIK-TEMP', '-BAT-FUSE','-PROSTOWNIK', '-MZK', '-RS485', '-ASYM', '-BAT-FUSE-MOD', '-CZUJNIK-MZK')
- #Pomijamy sprawdzenie modułów
+import json
+
 selftest, stop_test, default_ip, bez_izolacji, bez_prostowników = False, False, False, False, False
-# operators = ['A.Salamon', 'M.Dżygun', 'W.Sławiński', 'Z.Batogowski', 'W.Tomczyk', 'K.Hamann']
-operators = {'A.Salamon':'', 'M.Dżygun':'', 'W.Sławiński':'177/E/0832/19', 'Z.Batogowski':'177/E/0709/23', 'W.Tomczyk':'177/E/0708/23', 'K.Hamann':'177/E/0706/23'}    
+  
+with open('config.json', 'r', encoding='utf8') as json_file:
+    config = json.load(json_file)
+
+lista_indeksow = (list(config.keys()))[:-1]
+operators = list(config['operators'].keys())
+
 Test_data = namedtuple('Test_data', ['test_class','test_name', 'config_name', 'config_range', 'required_modules', 'config', 'result'])
 test_classes = tuple(testy.test_classes) 
 
@@ -28,41 +32,22 @@ for i in test_classes:
 ident = {'Nazwa:  ': '', 'Indeks:  ': '', 'Nr seryjny:  ': '', 'Nr seryjny Q1:  ': '',
          'Wersja programu Q1:  ': '', 'Wersja konfiguracji Q1:  ': '', 'Operator (test izolacji):  ':  '', 'Operator (test systemu):  ':  '', 'Data:  ':  ''}
 
-indeks_nazwa = {'0000-00000-00': ('Custom test', 'OS-000309-001E'),
-                 '9070-00696-22': ('Modernizacja Benning', 'OS-000310-002E'), 
-                 '9070-00696-28': ('Modernizacja Benning', 'OS-000310-002E'),
-                 '9030-00328': ('H-system', 'OS-000311-002A'),
-                 }
-indeks_config = {
-                 '9070-00696-28': {'-UKB': 1, '-OUTPUT-Q1': 0, '-OUTPUT-MWY': 7, '-INPUTS': 0, '-STYCZNIK': 2, '-BOCZNIK': 1,
-                             '-CZUJNIK-TEMP': 1, '-BAT-FUSE': 0, '-PROSTOWNIK': 4, '-MZK': 0, '-RS485': 0,
-                             '-ASYM': 1, '-BAT-FUSE-MOD': 1, '-CZUJNIK-MZK': 0},
-                 '9070-00696-22': {'-UKB': 1, '-OUTPUT-Q1': 0, '-OUTPUT-MWY': 7, '-INPUTS': 0, '-STYCZNIK': 2, '-BOCZNIK': 1,
-                             '-CZUJNIK-TEMP': 1, '-BAT-FUSE': 0, '-PROSTOWNIK': 4, '-MZK': 0, '-RS485': 0,
-                             '-ASYM': 1, '-BAT-FUSE-MOD': 1, '-CZUJNIK-MZK': 0},                             
-                 '9030-00328': {'-UKB': 0, '-OUTPUT-Q1': 0, '-OUTPUT-MWY': 0, '-INPUTS': 0, '-STYCZNIK': 0, '-BOCZNIK': 0,
-                             '-CZUJNIK-TEMP': 0, '-BAT-FUSE': 0, '-PROSTOWNIK': 0, '-MZK': 1, '-RS485': 0,
-                             '-ASYM': 0, '-BAT-FUSE-MOD': 0, '-CZUJNIK-MZK': 1},         
-                 '0000-00000-00': {'-UKB': 0, '-OUTPUT-Q1': 0, '-OUTPUT-MWY': 0, '-INPUTS': 0, '-STYCZNIK': 0, '-BOCZNIK': 0,
-                             '-CZUJNIK-TEMP': 0, '-BAT-FUSE': 0, '-PROSTOWNIK': 0, '-MZK': 0, '-RS485': 0,
-                             '-ASYM': 0, '-BAT-FUSE-MOD': 0, '-CZUJNIK-MZK': 0},             }
-
 def set_config(indeks, debug=False):
     if debug:
         print('indeks config')
-        for j in indeks_config[indeks]:
-            print(j, indeks_config[indeks][j], end='')
+        for j in config[indeks]:
+            print(j, config[indeks][j], end='')
         print('tests config')    
         for i in tests:
             print(i, tests[i].config[0], end='')
-    for i in indeks_config[indeks]:
-        if indeks_config[indeks][i] == 0:
+    for i in config[indeks]:
+        if config[indeks][i] == 0:
             del tests[i]
         else:
-            tests[i].config[0] = indeks_config[indeks][i]
+            tests[i].config[0] = config[indeks][i]
     if debug:        
-        for j in indeks_config[indeks]:
-            print(j, indeks_config[indeks][j], end='')            
+        for j in config[indeks]:
+            print(j, config[indeks][j], end='')            
         for i in tests:
             print(i, tests[i].config[0], end='')   
 
@@ -132,7 +117,7 @@ def test_all_thread(w):
         wynik.append(tests[i].result[0])
         json_file[tests[i].test_name] = tests[i].result[0], tests[i].config[0]
 
-    q1 = modules.Q1()
+    q1 = modules.Q1(w=w)
     if '-PROSTOWNIK' in tuple(tests.keys()) and not bez_prostowników:
         json_file['prostowniki'] = q1.get_rectifier_serial(tests['-PROSTOWNIK'].config[0])#numery seryjne prostowników
     json_file['ip'], json_file['izolacja'], json_file['noserial'] = default_ip, bez_izolacji, bez_prostowników   
@@ -242,9 +227,9 @@ def self_test():
         for j in tests[i].required_modules:
             required.add(j)
     if ident['Indeks:  '] == '0000-00000-00':
-        required = {modules.MZF, modules.MWW, modules.Q1}  # modules.RS485 modules.MZB, modules.LOAD, 
+        required = {modules.MZF, modules.MWW, modules.Q1, modules.MZB, modules.LOAD}  # modules.RS485
    
-    #required.remove(modules.Q1)
+    required.remove(modules.Q1)
     for k in required:
         if k().self_test():
             print(f'Komunikacja z {k.__name__} OK.')
@@ -274,16 +259,16 @@ except OSError as e:
 # Okno do wpisania indeksu i numeru serejnego testowanej siłowni
 event, values = sg.Window('Wybór szablonu',
                           [[sg.Text('Indeks wyrobu: ', size=(20, 1)),
-                            sg.Combo(values=list(indeks_nazwa.keys()), size=(15, 1),
-                                     key='Indeks:  ', default_value=list(indeks_nazwa.keys())[3])],
+                            sg.Combo(values=lista_indeksow, size=(15, 1),
+                                     key='Indeks:  ', default_value=lista_indeksow[0])],
                            [sg.Text('Numer seryjny: ', size=(20, 1)),
                             sg.Input(size=(15, 1), justification='right',
                                      expand_x=True, key='Nr seryjny:  ')],
                            [sg.Text('Operator (test izolacji): ', size=(20, 1)),
-                            sg.Combo(list(operators.keys()), size=(15, 1), default_value='W.Sławiński',  # ident['Operator:  ']
+                            sg.Combo(operators, size=(15, 1), default_value=operators[0],  # ident['Operator:  ']
                                      key='Operator (test izolacji):  ')],
                             [sg.Text('Operator (test systemu): ', size=(20, 1)),         
-                            sg.Combo(list(operators.keys()), size=(15, 1), default_value='W.Sławiński',  # ident['Operator:  ']
+                            sg.Combo(operators, size=(15, 1), default_value=operators[0],  # ident['Operator:  ']
                                      key='Operator (test systemu):  ')],
                             [sg.HSep()],                                              
                             [sg.Checkbox('Zatrzymaj po pierwszym negatywnym.', key='test_break', )],
@@ -311,19 +296,23 @@ if ident['Indeks:  '] == '0000-00000-00':
     if event == 'Zapisz':
 
         # window.refresh()
-        for i in indeks_config['0000-00000-00']:
+        name = config['0000-00000-00'].pop('name')
+
+        for i in config['0000-00000-00']:
             if i == '-UKB' or i == '-PROSTOWNIK':
-                indeks_config['0000-00000-00'][i] = check_number(values[i], i)
+                config['0000-00000-00'][i] = check_number(values[i], i)
             else:
-                indeks_config['0000-00000-00'][i] = int(values[i])
+                config['0000-00000-00'][i] = int(values[i])
         set_config('0000-00000-00')
 
                 # main_window['-ST-'].update(disabled=False)
-        
+        config['0000-00000-00']['name'] = name
         print(f'Konfiguracja zapisana.') 
 
 window = make_main_window()
 # Główna pętla aplikacji.
+
+
 try:
     while True:
         window, event, values = sg.read_all_windows()
@@ -332,10 +321,10 @@ try:
             if sf.self_test():
                 sf.realy_switching('000')
             del sf
-            """sb = modules.MZB()
+            sb = modules.MZB()
             if sb.self_test():
                 sb.realy_switching('0000')
-            del sb"""
+            del sb
             break
         elif event == '-SF-': # selftest
             buttons_availability(window, False)
@@ -344,28 +333,39 @@ try:
             # if self_test(window):
             if values['-RETURN_TRIGGER-']:
                 print('Self test OK.')
-                print('Power ON ...')
+                
                 window.refresh()
-
+                selftest = True
                 if selftest:
+
+                    sb = modules.MZB(w=window)
+                    sb.realy_switching('1111')
+                    for i in range(5):
+                        time.sleep(1)
+                        window.refresh()
+                    del sb
+
                     sf = modules.MZF(w=window)
                     sf.realy_switching('111')
-                    for i in range(3):
+                    for i in range(5):
                         time.sleep(1)
                         window.refresh()
                     del sf
+                    print('Power ON ...')
 
-                    for i in range(6):
-                        time.sleep(1)
-                        window.refresh()
 
-                q1 = modules.Q1() 
-                ident['Nr seryjny Q1:  '], ident['Wersja programu Q1:  '], \
-                    ident['Wersja konfiguracji Q1:  '] = q1.ident_inf()
+                q1 = modules.Q1(w=window)
+                if not q1.self_test():
+                    window['-OUTPUT-'].update('Brak komunikacji ze sterownikiem q1.\n', text_color_for_value='red', append=True)
+                    continue
+                else:
+                    print('Komunikacja z Q1 OK.') 
+                    
+                ident['Nr seryjny Q1:  '], ident['Wersja programu Q1:  '], ident['Wersja konfiguracji Q1:  '] = q1.ident_inf()
 
                 ident['Data:  '] = datetime.now().strftime("%d/%m/%Y")
-                if ident['Indeks:  '] in indeks_nazwa.keys():
-                    ident['Nazwa:  '] = indeks_nazwa[ident['Indeks:  ']][0]
+                if ident['Indeks:  '] in lista_indeksow:
+                    ident['Nazwa:  '] = config[ident['Indeks:  ']]['name'][0]
                 for i in ident:
                     window[i].update(ident[i])
                 if int(ident['Wersja programu Q1:  '].split('b')[1]) >= 30:
@@ -374,17 +374,17 @@ try:
                     window['Wersja programu Q1:  '].update(text_color='red')
                     print('Tester wymaga Q1 z wersją 1.0b30 lub wyższą.')
                     continue                
-                if ident['Wersja konfiguracji Q1:  '] != indeks_nazwa[ident['Indeks:  ']][1] and ident['Indeks:  '] != '0000-00000-00':
+                if ident['Wersja konfiguracji Q1:  '] != config[ident['Indeks:  ']]['name'][1] and ident['Indeks:  '] != '0000-00000-00':
                     window['Wersja konfiguracji Q1:  '].update(text_color='red')
                     print(f"Nieprawidłowa wersja konfiguracji -> {ident['Wersja konfiguracji Q1:  ']}")
-                    print(f"Prawidłowa wersja konfiguracji    -> {indeks_nazwa[ident['Indeks:  ']][1]}")
+                    print(f"Prawidłowa wersja konfiguracji    -> {config[ident['Indeks:  ']]['name'][1]}")
                     test_button_disable = True
                     continue
                     #buttons_availability(window, False)
                     #window.refresh()
                     
                 else:
-                    print(f"Wersja konfiguracji Q1 -> {indeks_nazwa[ident['Indeks:  ']][1]} OK")
+                    print(f"Wersja konfiguracji Q1 -> {config[ident['Indeks:  ']]['name'][1]} OK")
                     
                 del q1
                 #else:
@@ -415,7 +415,7 @@ try:
             del sf
         elif event in ('b1', 'b2', 'b3', 'b4'): #baterie odłaczanie podłączanie
             pass
-            """command = ['x', 'x', 'x', 'x']
+            command = ['x', 'x', 'x', 'x']
             if values[event]:
                 command[int(event[1]) - 1] = '1'
             else:
@@ -426,22 +426,28 @@ try:
                 sb.realy_switching(command)
             else:
                 window[event].update(value=False)
-            del sb"""
+            del sb
             # print('Brak ip MZF')
         elif event == '-RT-':
-            raport.save_pdf(json_file, tuple(ident.keys()), tuple(tests[i].test_name for i in tuple(tests.keys())),
-                            name='raporty\\' + ident['Nazwa:  '])
+            json_file.update({'ident': tuple(ident.keys())})
+            wykonane_testy = [tests[i].test_name for i in tuple(tests.keys())]
+            json_file.update({'tests': wykonane_testy})
+            #print(json_file)
+            with open('raport.json', 'w', encoding='utf8') as outfile: 
+                json.dump(json_file, outfile, ensure_ascii=False)            
+            raport.save_pdf(json_file, name='raporty\\' + ident['Nazwa:  '])
             print('Raport zapisany')
 except Exception as e:
     sg.Print('Exception in my event loop for the program: ', sg.__file__, e, keep_on_top=True, wait=True)
     sg.popup_error_with_traceback('Problem in my event loop!', e)
+    #print(e)
 finally:
     # Rozwarcie przekaźników faz i baterii
     sf = modules.MZF()
     if sf.self_test():
         sf.realy_switching('000')
     del sf
-    #sb = modules.MZB()
-    #if sb.self_test():
-    #    sb.realy_switching('0000')
-    #del sb
+    sb = modules.MZB()
+    if sb.self_test():
+        sb.realy_switching('0000')
+    del sb
