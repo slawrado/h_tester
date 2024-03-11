@@ -13,6 +13,8 @@ import testy
 import threading
 import json
 
+__version__ = "1.0.0"
+
 selftest, stop_test, default_ip, bez_izolacji, bez_prostowników = False, False, False, False, False
   
 with open('config.json', 'r', encoding='utf8') as json_file:
@@ -357,6 +359,7 @@ try:
                 q1 = modules.Q1(w=window)
                 if not q1.self_test():
                     window['-OUTPUT-'].update('Brak komunikacji ze sterownikiem q1.\n', text_color_for_value='red', append=True)
+                    window['-SF-'].update(disabled=False)
                     continue
                 else:
                     print('Komunikacja z Q1 OK.') 
