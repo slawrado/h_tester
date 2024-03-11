@@ -285,7 +285,7 @@ else:
     stop_test = False    
 if values['Indeks:  ']:
     if values['Indeks:  '] != '0000-00000-00':
-        set_config(values['Indeks:  '])
+        set_config(values['Indeks:  '], debug=False)
     ident['Indeks:  '], ident['Nr seryjny:  '], ident['Operator (test izolacji):  '] = values['Indeks:  '], values['Nr seryjny:  '], values['Operator (test izolacji):  ']
     ident['Operator (test systemu):  '] = values['Operator (test systemu):  ']
     stop_test, default_ip, bez_izolacji, bez_prostowników = values['test_break'], values['ip'], values['izolacja'], values['no_serial']
@@ -303,7 +303,7 @@ if ident['Indeks:  '] == '0000-00000-00':
                 config['0000-00000-00'][i] = check_number(values[i], i)
             else:
                 config['0000-00000-00'][i] = int(values[i])
-        set_config('0000-00000-00')
+        set_config('0000-00000-00', debug=False)
 
                 # main_window['-ST-'].update(disabled=False)
         config['0000-00000-00']['name'] = name
@@ -435,7 +435,7 @@ try:
             #print(json_file)
             with open('raport.json', 'w', encoding='utf8') as outfile: 
                 json.dump(json_file, outfile, ensure_ascii=False)            
-            raport.save_pdf(json_file, name='raporty\\' + ident['Nazwa:  '])
+            raport.save_pdf(json_file, name='raporty\\' + ident['Nazwa:  '], debug=False)
             print('Raport zapisany')
 except Exception as e:
     sg.Print('Exception in my event loop for the program: ', sg.__file__, e, keep_on_top=True, wait=True)

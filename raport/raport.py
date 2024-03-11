@@ -32,7 +32,7 @@ else:
 pdfmetrics.registerFont(TTFont('LucidaTypewriterRegular', os.path.join(application_path, 'LucidaTypewriterRegular.ttf')))
 pdfmetrics.registerFont(TTFont('LucidaTypewriterBold', os.path.join(application_path, 'LucidaTypewriterBold.ttf')))
 
-with open('..\config.json', 'r', encoding='utf8') as json_file:
+with open("config.json", 'r', encoding='utf8') as json_file:
     config = json.load(json_file)
     uprawnienia = config['operators'] 
    
@@ -147,8 +147,10 @@ def save_pdf(file_json, name='raport_', debug=False):
             izolacja_data = json.load(json_file)        
             izolacja_data = izolacja_data['izolacja'] 
     else:
-        file_json.pop('Operator (test izolacji):  ')  
-        file_json['ident'].remove('Operator (test izolacji):  ')             
+        file_json.pop('Operator (test izolacji):  ') 
+        ident = list(file_json['ident'])
+        ident.remove('Operator (test izolacji):  ') 
+        file_json['ident'] = tuple(ident)             
     styles = getSampleStyleSheet()
     filename = name+' ('+datetime.now().strftime("%Y-%m-%d")+' '+file_json['Nr seryjny:  ']+').pdf'
     pagesize = pagesizes.portrait(pagesizes.A4)
