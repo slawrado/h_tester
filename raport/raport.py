@@ -5,7 +5,7 @@ from reportlab.platypus import SimpleDocTemplate, PageTemplate, Table, Spacer, I
 from reportlab.platypus.frames import Frame
 from reportlab.lib import pagesizes
 from reportlab.platypus.paragraph import Paragraph
-from functools import partial
+#from functools import partial
 from reportlab.platypus.tables import TableStyle
 from reportlab.lib import colors
 from reportlab.lib.units import inch

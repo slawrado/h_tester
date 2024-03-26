@@ -261,11 +261,27 @@ class LOAD:
         """Sprawdza czy moduł odpowiada"""
         return ping(self.ip)
 
+    def recv_basic(self):
+        total_data=[]
+        while True:
+            data = self.s.recv(1024)       
+            data = data.decode('ascii')    #
+            total_data.append(data)
+            time.sleep(0.5)
+            if '\n' in data:
+                total_data[-1] = total_data[-1][:-1] 
+                break
+            
+        return ''.join(total_data) 
     def get_value(self, q):
-        """Odczyt pomiarów z opornicy"""
+        """Odczyt pomiarów z opornicy, q CURR|VOLT|POW|RES|TEMP"""
         try:
-            self.s.sendall(('MEAS:'+q+'?;\r\n').encode())
-            c = float(self.s.recv(1024).decode()[:-1])
+            self.s.sendall(('MEAS:'+q+'?;\n').encode('ascii'))
+            resp = self.recv_basic()
+            try:
+                c = float(resp)
+            except ValueError:
+                return resp    
             return c
         except socket.error as e:
             self.logger.exception(e)
@@ -282,14 +298,14 @@ class LOAD:
             return e
 
     def set_value(self, q, value):
-        """Ustawia prąd obciążenia i załącza oprnicę, 0 wyłącza obciązenie"""
+        """Ustawia parametr CURR|VOLT|POW|RES i wartość obciążenia załącza oprnicę, wartość 0 wyłącza obciązenie"""
         try:
             value = ' '+str(value)
             if value == ' 0':
                 self.s.sendall((q + value + ';:INP OFF;\r\n').encode())
             else:
                 self.s.sendall((q + value + ';:INP ON;\r\n').encode())
-            self.logger.info(f'Set load: {value}')
+            self.logger.info(f'Set load: {value} {q}')
         except socket.error as e:
             self.logger.exception(e)
             time.sleep(1)
@@ -597,26 +613,50 @@ class RS485:
 class Fluke8845A:
     """Komunikacja z Fluke 8845A"""
 
-    def __init__(self, ip='192.168.7.91', port=3490):  # PLI-13460
+    def __init__(self, ip='192.168.1.107', port=3490):  # PLI-13460
         self.ip = ip
         self.port = port
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.s.connect((self.ip, self.port))
+        #self.s.connect((self.ip, self.port))
         self.logger = logging.getLogger(self.__class__.__name__)
+
+    def connection(self, on=True):
+        if on:
+            self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.s.connect((self.ip, self.port))
+        else:
+            self.s.close()                
 
     def self_test(self):
         """Sprawdza czy moduł odpowiada"""
         return ping(self.ip)
 
-    def get_value(self):
+    def recv_basic(self):
+        total_data=[]
+        while True:
+            data = self.s.recv(1024)       
+            data = data.decode('ascii')    #
+            total_data.append(data)
+            time.sleep(0.5)
+            if '\n' in data:
+                total_data[-1] = total_data[-1][:-1] 
+                break
+            
+        return ''.join(total_data) 
+        
+    def get_value(self, command=b'FETCH1?\n'):
         """Odczyt pomiarów z miernika"""
         try:
-            self.s.sendall('FETCh3?\n'.encode())
+            self.s.sendall(command)
+            time.sleep(0.2)
+            self.s.sendall(b'\n')
             time.sleep(0.25)
             data = self.s.recv(1024)
+            #print(data)
             if len(data) > 1:
                 self.s.close()
-                return float(data.decode()[:-1])
+                return data
+                return float(data.decode('ascii')[:-1])
             else:
                 print('No respnse')
                 self.s.close()
@@ -667,16 +707,31 @@ if __name__ == "__main__":
     obiekt = Q1()
     print(obiekt.self_test())
     fazy.realy_switching('000')"""
-    load_dc = LOAD()
+    """load_dc = LOAD()
     #print(load_dc.self_test())
     #time.sleep(1)
     load_dc.connection()
-    time.sleep(1)
-    load_dc.set_mode('VOLT', 53)
-    #load_dc.set_value('CURR', 10)
-    time.sleep(1)
-    r = load_dc.get_value('VOLT')
-    print('value:',r)
+
+    time.sleep(0.5)
+    load_dc.set_value('CURR', 15)
+    time.sleep(0.5)
+    c = load_dc.get_value('CURR')
+    print('current:',c) 
+    time.sleep(0.5)
+    v = load_dc.get_value('VOLT')
+    print('voltage:',v)  
+    time.sleep(0.5)
+    p = load_dc.get_value('POW')
+    print('power:',p) 
+    time.sleep(0.5)
+    t = load_dc.get_value('TEMP')
+    print('temperature:',t)  
+    time.sleep(0.5)
+    r = load_dc.get_value('RES')
+    print('resistant:',r)  """          
+    
+
+   
     """mww = MWW()
     print(mww.odczyt(2))
     mww.send_packet('2,2,0')
@@ -687,6 +742,17 @@ if __name__ == "__main__":
     
     time.sleep(5)
     print(mww.odczyt(2))"""
+    fluke = Fluke8845A()
+    #print(fluke.self_test())
+    #time.sleep(0.25)
+    fluke.connection()
+    time.sleep(0.25)
+    for i in range(1):
+        print(fluke.get_value(b'*OPC?')) #
+        time.sleep(1)
+    del fluke    
+    #fluke.connection(on=False) 
+    #del fluke   
     #mww = MWW()
     #sterownik = Q1(ip='192.168.1.108')
     #mww = MWW()

@@ -14,7 +14,7 @@ import threading
 import json
 
 __version__ = "1.0.0"
-
+#Wartości opcjonalnych elementów testu
 selftest, stop_test, default_ip, bez_izolacji, bez_prostowników = False, False, False, False, False
   
 with open('config.json', 'r', encoding='utf8') as json_file:
@@ -22,15 +22,16 @@ with open('config.json', 'r', encoding='utf8') as json_file:
 
 lista_indeksow = (list(config.keys()))[:-1]
 operators = list(config['operators'].keys())
-
+#dane poszczególnych testów
 Test_data = namedtuple('Test_data', ['test_class','test_name', 'config_name', 'config_range', 'required_modules', 'config', 'result'])
+#Kritka z obiektami klas testów
 test_classes = tuple(testy.test_classes) 
 
 
-tests = {}
+tests = {} # słownik z konfiguracją poszczególnych testów
 for i in test_classes:
     tests[i.test_key] = Test_data(i, i.test_name, i.config_name, i.config_range, i.required_modules, [0], [False])
-
+# Dane identyfikacyjne testów
 ident = {'Nazwa:  ': '', 'Indeks:  ': '', 'Nr seryjny:  ': '', 'Nr seryjny Q1:  ': '',
          'Wersja programu Q1:  ': '', 'Wersja konfiguracji Q1:  ': '', 'Operator (test izolacji):  ':  '', 'Operator (test systemu):  ':  '', 'Data:  ':  ''}
 
@@ -44,7 +45,7 @@ def set_config(indeks, debug=False):
             print(i, tests[i].config[0], end='')
     for i in config[indeks]:
         if config[indeks][i] == 0:
-            del tests[i]
+            del tests[i] #usuniecie testu ze słownka testów do wykonania
         else:
             tests[i].config[0] = config[indeks][i]
     if debug:        
@@ -90,7 +91,7 @@ def test_all_thread(w):
     """Uruchamia wszystkie testy danej konfiguracji."""
 
     for i in tests:
-        w[i + 'R'].update('')  # zerowanie wników testów
+        w[i + 'R'].update('')  # zerowanie wników testów w oknie aplikacji
     liczba_testow = len(tests) # - len([tests[i].config[0] for i in tests if tests[i].config[0] == 0])                                    
     print('Liczba zaplanowanych testów: ', liczba_testow)
     if stop_test:
@@ -100,7 +101,7 @@ def test_all_thread(w):
         print('Test numer: {}'.format(tuple(tests.keys()).index(i)+1))
         w[i + 'R'].update('In progress', text_color='yellow')
         w.refresh()
-        ti = tests[i].test_class(tests[i].config[0], w) #instancja obiektu testu
+        ti = tests[i].test_class(tests[i].config[0], w) #utworzenie instancji obiektu danego testu
         if ti.test():  # wywołanie metody test, jeśli wykona się poprawnie: zwróci True
             w[i + 'R'].update('Ok', text_color='white')
             tests[i].result[0] = True
@@ -228,11 +229,11 @@ def self_test():
     for i in tests:
         for j in tests[i].required_modules:
             required.add(j)
-    if ident['Indeks:  '] == '0000-00000-00':
+    if ident['Indeks:  '] == '0000-00000-00': #ręczny wybór testów do wykonania
         required = {modules.MZF, modules.MWW, modules.Q1, modules.MZB, modules.LOAD}  # modules.RS485
    
-    required.remove(modules.Q1)
-    for k in required:
+    required.remove(modules.Q1) #Q1 startuje po uruchomieniu aplikacji
+    for k in required: #sprawdzenie komunikacji z modułami testera
         if k().self_test():
             print(f'Komunikacja z {k.__name__} OK.')
         else:
