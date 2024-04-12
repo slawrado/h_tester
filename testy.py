@@ -52,13 +52,14 @@ def sec2min(total_seconds):
 @register
 class TestStycznika:
 
-    """Zwiera i rozwiera styczniki"""
+    """Wykonuje rozwarcie i zwarcie styczników i weryfikuje odpowiednie alarmy sterownika."""
     test_number = 5
-    test_key = '-STYCZNIK'
     test_name = 'Test styczników'
     config_name = 'Styczniki'
     config_range = list(range(4))
     required_modules = (modules.Q1, )
+    number_tests = 0
+    test_result = False    
 
     def __init__(self, number=0, w=None):
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -182,13 +183,15 @@ class TestStycznika:
 @register
 class TestBocznika:
 
-    """Sprawdza wartość i kierunek prądu baterii"""
+    """Odcina zasilanie AC, sprawdza kierunek i wartość pradu baterii."""
     test_number = 6
-    test_key = '-BOCZNIK'
     test_name = 'Test boczników'
     config_name = 'Boczniki'
     config_range = list(range(2))
     required_modules = (modules.Q1, modules.MZF, modules.LOAD)
+    number_tests = 0
+    test_result = False
+
 
     def __init__(self, number=0, w=None):
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -258,13 +261,14 @@ class TestBocznika:
 
 @register
 class TestRs485:
-    """Sprawdzenie komunikacji po RS485"""
+    """Odczytuje rejestr 281 po modbus RTU i over TCP i porównuje odczyty"""
     test_number = 11
-    test_key = '-RS485'
     test_name = 'Test komunikacji rs485 modbus'
     config_name = 'RS485'
     config_range = list(range(2))
     required_modules = (modules.Q1, modules.RS485)
+    number_tests = 0
+    test_result = False
 
     def __init__(self, number=0, w=None):
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -312,13 +316,14 @@ class TestRs485:
 
 @register
 class TestBezpiecznikaBat:
-    """Sprawdzenie zadziałania alarmu bezpiecznika baterii modernizacja enetek"""
+    """Wymusza i sprawdza pojawienie się i zejście kolejnych alarmów bezpiecznika baterii."""
     test_number = 13
-    test_key = '-BAT-FUSE-MOD'
     test_name = 'Test alarmu bezpiecznika baterii'
     config_name = 'Alarm bezpiecznika baterii'
     config_range = list(range(5))
     required_modules = (modules.Q1, modules.MWW)
+    number_tests = 0
+    test_result = False
 
     def __init__(self, number=0, w=None):
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -400,13 +405,14 @@ class TestBezpiecznikaBat:
     # 1.3.6.1.4.1.32038.2.2.5.24.1.2.0   alarms.alarmsAsyTable.alarmsAsyEntry.alarmsBattAsyHi	  
 @register
 class TestAsymBat:
-    """Sprawdzenie zadziałania alarmu asymetrii baterii modernizacja enetek"""
+    """Sprawdzenie zadziałania alarmu asymetrii baterii modernizacja enetek, podaje minus na wej alarmu asymetrii sterownika"""
     test_number = 12
-    test_key = '-ASYM'
     test_name = 'Test asymetrii baterii'
     config_name = 'Asymetria baterii'
     config_range = list(range(2))
     required_modules = (modules.Q1, modules.MWW)
+    number_tests = 0
+    test_result = False
 
     def __init__(self, number=0, w=None):
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -479,13 +485,14 @@ class TestAsymBat:
 
 @register
 class TestInput:
-    """Sprawdzenie wejść (MWE)"""
+    """Zwiera wejścia MWE i sprawdza reakcję Q1."""
     test_number = 4
-    test_key = '-INPUTS'
     test_name = 'Test wejść (MWE)'
     config_name = 'Wejscia (MWE)'
     config_range = list(range(0, 17, 8))
     required_modules = (modules.Q1, modules.MWW)
+    number_tests = 0
+    test_result = False
 
     def __init__(self, number=0, w=None):
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -558,12 +565,13 @@ class TestInput:
 class TestOutputQ1_old:
     """Sprawdza wyjscia Q1"""
     test_number = 2
-    test_key = '-OUTPUT-Q1'
     test_name = 'Test wyjść (Q1)'
     config_name = 'Wyjścia (Q1)'
     config_range = list(range(5))
     name, adres, offset = 'Q1', 0, 1
     required_modules = (modules.Q1, modules.MWW)
+    number_tests = 0
+    test_result = False
 
     def __init__(self, number=0, w=None):
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -641,14 +649,15 @@ class TestOutputQ1_old:
         return True
 @register        
 class TestOutputQ1:
-    """Sprawdza wyjscia Q1"""
+    """Steruje stanem wyjść Q1 i weyfikuje zmiany."""
     test_number = 2
-    test_key = '-OUTPUT-Q1'
     test_name = 'Test wyjść (Q1)'
     config_name = 'Wyjścia (Q1)'
     config_range = list(range(5))
     name, adres, offset = 'Q1', 0, 1
     required_modules = (modules.Q1, modules.MWW)
+    number_tests = 0
+    test_result = False
 
     def __init__(self, number=0, w=None):
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -722,13 +731,15 @@ class TestOutputQ1:
         return True
 @register
 class TestOutputMWY(TestOutputQ1):
-    """Sprawdza wyjscia Q1"""
+    """Sprawdza wyjscia Q1, steruje stanem wyjść MWY i weyfikuje zmiany."""
     test_number = 3
-    test_key = '-OUTPUT-MWY'
     test_name = 'Test wyjść (MWY)'
     config_name = 'Wyjścia (MWY)'
     config_range = list(range(9))
     name, adres, offset = 'MWY', 1, 9
+    number_tests = 0
+    test_result = False
+
     def __init__(self, number=0, w=None):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.q1 = None
@@ -738,13 +749,14 @@ class TestOutputMWY(TestOutputQ1):
         self.realy_on = {17: 127, 16: 191, 15: 223, 14: 239, 13: 247, 12: 251, 11: 253, 10: 254} # Klucze załączenie przekaźnika 10-17: MWY, wartości stan mwe testera
 @register
 class TestUkb:
-    """Sprawdza działanie płytki UKB"""
+    """Sprawdza działanie płytki UKB, Podaje plusa na kolejne zabezpieczenia i weryfikuje wejście i zejście alarmu bezpiecznika odbioru."""
     test_number = 9
-    test_key = '-UKB'
     test_name = 'Test kontroli zabezpieczeń odbiorów'
     config_name = 'Zabezpieczenia odbiorów'
     config_range = None
     required_modules = (modules.Q1, modules.MWW)
+    number_tests = 0
+    test_result = False
 
     def __init__(self, number=0, w=None):
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -819,13 +831,14 @@ class TestUkb:
 
 @register
 class TestCzujnikowMZK:
-    """Sprawdza czujniki podłączone do MZK"""
+    """Sprawdza komunikację MZK z czujnikami temperatury."""
     test_number = 14
-    test_key = '-CZUJNIK-MZK'
     test_name = 'Test czujników (MZK)'
     config_name = 'Czujniki (MZK)'
     config_range = list(range(2))
     required_modules = (modules.Q1, )
+    number_tests = 0
+    test_result = False
 
     def __init__(self, number=0, w=None):
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -885,13 +898,14 @@ class TestCzujnikowMZK:
 
 @register
 class TestCzujnikowTemp:
-    """Sprawdza czujniki temperatury podłączone do Q1"""
+    """Sprawdza komunikację Q1 z czujnikami temperatury."""
     test_number = 7
-    test_key = '-CZUJNIK-TEMP'
     test_name = 'Test czujników temperatury (Q1)'
     config_name = 'Czujniki temperatury (Q1)'
     config_range = list(range(4))
     required_modules = (modules.Q1, )
+    number_tests = 0
+    test_result = False
 
     def __init__(self, number=0, w=None):
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -968,11 +982,13 @@ class TestCzujnikowTemp:
 class TestBaterryFuses:
     """Sprawdza zadziałanie alarmów przepalenia bezpieczników baterii"""
     test_number = 8
-    test_key = '-BAT-FUSE'
     test_name = 'Test kontroli zabezpieczeń baterii'
     config_name = 'Zabezpieczenia baterii'
     config_range = list(range(5))
     required_modules = (modules.Q1, modules.MZB)
+    number_tests = 0
+    test_result = False
+
 
     def __init__(self, number=0, w=None):
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -1063,13 +1079,14 @@ class TestBaterryFuses:
 @register
 class TestRectifier:
 
-    """Sprawdza pracę prostowników"""
+    """Wykonuje przydział faz, odcina kolejne fazy, sprawdza poprawność alrmów zaniku faz i awarii prostownika.Sprawdza pracę prostowników"""
     test_number = 1
-    test_key = '-PROSTOWNIK'
     test_name = 'Test prostowników'
     config_name = 'Prostowniki'
     config_range = None
     required_modules = (modules.Q1, modules.MZF)
+    number_tests = 0
+    test_result = False
     
 
     def __init__(self, number=0, w=None):
@@ -1243,13 +1260,14 @@ class TestRectifier:
 @register
 class TestMZK:
 
-    """Sprawdza sprawność MZK"""
+    """Sprawdza działanie wyjść i wejść MZK"""
     test_number = 10
-    test_key = '-MZK'
     test_name = 'Test MZK'
     config_name = 'MZK'
     config_range = list(range(2))
     required_modules = (modules.Q1, )
+    number_tests = 0
+    test_result = False
 
     def __init__(self, number=0, w=None):
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -1325,7 +1343,84 @@ class TestMZK:
         if self.w:
             self.w['progress'].update_bar(0,0)
         return True
+class TestMWS:
 
+    """Sprawdza zadziałanie odłaczanie i przyłaczanie styczników przez moduł MWS"""
+    test_number = 11
+    test_name = 'Test MWS'
+    config_name = 'MWS'
+    config_range = list(range(3))
+    required_modules = (modules.LOAD, )
+    number_tests = 0
+    test_result = False
+
+    def __init__(self, number=0, w=None):
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.load = None
+        self.fluke = None
+        self.w = w
+        self.number = number
+        self.rgr = (42.0, 48.0)
+        self.krytyczna = (44.0, 48.0)
+        self.niekrytyczna = (45.0, 49.0)
+
+    def get_modules(self):
+        """Tworzy obiekty modułów używanych przy wykonywaniu testu"""
+        if self.number:
+            self.load = modules.LOAD()
+            self.fluke = modules.Fluke8845A()   
+
+    def test(self):
+        self.get_modules()
+        start = datetime.now()
+        self.logger.info('Test: sprawdza sprawność MWS')
+
+        printr('Start testu MWS: {:02d}:{:02d}:{:02d}'
+               .format(start.hour,start.minute,start.second), self.w, self.logger)
+        printr(f'Liczba zadeklarowanych modułów MWS: {self.number}', self.w, self.logger)
+
+        self.load.connection()
+        #offset = self.fluke.reading() - self.load.get_value('VOLT')
+        #print(offset)
+        #import sys
+        #sys.exit()
+        print(f'Napiecie niekrytycznych przed testem: {self.fluke.reading()}')
+        if self.fluke.reading == 9.9e+37:
+            print('Grupa odłaczona przed rozpoczeciem testu!')
+            return False
+        self.load.set_mode('VOLT')    
+        self.load.set_value('VOLT', self.niekrytyczna[0])
+        print(f'Ustawienie obciążenia na {self.niekrytyczna[0]}')      
+        time.sleep(20)
+        print(f'Napiecie niekrytycznych po 20 sekundach: {self.fluke.reading()}')      
+        if  self.fluke.reading() == 9.9e+37:
+            print('MWS odłaczył grupę niekrytyczną: OK')
+        else:
+            print('MWS nie odłaczył grupy niekrytycznej: Error')
+            return False
+        self.load.set_value('VOLT', self.niekrytyczna[1] + 0.8)             
+        print(f'Ustawieniu obciążenia na {self.niekrytyczna[1] + 0.8}')
+
+        time.sleep(300)
+        print(f'Napiecie niekrytycznych po 300 sekundach: {self.fluke.reading()}')
+        if  self.fluke.reading() != 9.9e+37 and  self.fluke.reading() > self.niekrytyczna[1] -1:
+            print('MWS podłaczył grupę niekrytyczną: OK')
+        else:
+            print('MWS nie podłaczył grupy niekrytycznej: Error')
+            self.load.set_value('VOLT', 0)
+            return False
+        self.load.set_value('VOLT', 0) 
+        print(f'Napiecie po wyłączeniu obciążenia: {self.fluke.reading()}')      
+        
+
+                     
+
+        stop = datetime.now()
+        printr('Koniec testu MWS: {:02d}:{:02d}:{:02d} Czas wykonania {}'
+               .format(stop.hour, stop.minute, stop.second, sec2min((stop-start).total_seconds())), self.w, self.logger)
+        if self.w:
+            self.w['progress'].update_bar(0,0)
+        return True
 # print(test_classes)
 test_classes = sorted([x for  x in test_classes], key=lambda x: x.test_number)
 # print(test_classes)
@@ -1377,8 +1472,14 @@ if __name__ == "__main__":
     #test.check_phase()
     #test = TestUkb(number=8)
     #test = TestBaterryFuses(number=4)
-    test = TestInput(number=8)
-    test.test()
+    #test = TestInput(number=8)
+    #test.test()
+    #for i in test_classes:
+    #    print(i.__name__)
+    mws = TestMWS(number=1)
+    mws.get_modules()
+    mws.test()
+    
 
 
  

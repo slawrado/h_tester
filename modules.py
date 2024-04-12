@@ -78,9 +78,9 @@ class Q1:
         'alarmsEnvironmentVentOn': '.1.3.6.1.4.1.32038.2.2.5.1.2.1.13.0',
         'alarmsEnvironmentCoolingFail': '.1.3.6.1.4.1.32038.2.2.5.1.2.1.3.0',
         'environmentMode': '.1.3.6.1.4.1.32038.2.2.4.5.1.20.0',
-        'environmentHumValue': '.1.3.6.1.4.1.32038.2.2.4.5.1.30.',
-        'environmentTempValue': '.1.3.6.1.4.1.32038.2.2.4.5.1.28.',    
-        'alarms.alarmsBatteryTable.alarmsBatteryEntry.alarmsBattFuse': '.1.3.6.1.4.1.32038.2.2.5.22.1.4.',
+        'environmentHumValue': '.1.3.6.1.4.1.32038.2.2.4.5.1.30.0',
+        'environmentTempValue': '.1.3.6.1.4.1.32038.2.2.4.5.1.28',    
+        'alarms.alarmsBatteryTable.alarmsBatteryEntry.alarmsBattFuse': '.1.3.6.1.4.1.32038.2.2.5.22.1.4',
         'alarms.alarmsAsyTable.alarmsAsyEntry.alarmsBattAsyHi': '.1.3.6.1.4.1.32038.2.2.5.24.1.2', 
         'ident.identFirmwareVersion': '.1.3.6.1.4.1.32038.2.2.1.2.0',
         'ident.identSerialNumber': '.1.3.6.1.4.1.32038.2.2.1.4.0',
@@ -153,7 +153,9 @@ class Q1:
         output = subprocess.run(command, capture_output=True, text=True)
         if output.returncode == 0:
             self.logger.info('Return Q1 snmp: {}'.format(''.join(output.stdout.split("\n"))))
+
             return ''.join(output.stdout.split('\n'))
+  
         else:
             if self.w:
                 self.w['-OUTPUT-'].update('Błąd komunikacji: SNMP!\n', text_color_for_value='red', append=True)
@@ -616,56 +618,61 @@ class Fluke8845A:
     def __init__(self, ip='192.168.1.107', port=3490):  # PLI-13460
         self.ip = ip
         self.port = port
-        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        #self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         #self.s.connect((self.ip, self.port))
         self.logger = logging.getLogger(self.__class__.__name__)
 
-    def connection(self, on=True):
-        if on:
-            self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.s.connect((self.ip, self.port))
-        else:
-            self.s.close()                
+    def reading(self, debug=False):
+        while True:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                try:
+                    s.connect((self.ip, self.port))
+                    s.sendall(b'FETCh3?\r\n')
+                    time.sleep(0.1)
+                    data = s.recv(1024)
+                except ConnectionResetError as e:
+                    if debug:
+                        print(f'recive: {e}') 
+                    time.sleep(0.1)
+                    data = None
+                    self.reading()
+                except ConnectionRefusedError as e:
+                    if debug:
+                        print(f'connect: {e}') 
+                    time.sleep(0.1)
+                    data = None
+                    self.reading()                   
+            if data:
+                return float(data.decode('ascii'))               
 
     def self_test(self):
         """Sprawdza czy moduł odpowiada"""
         return ping(self.ip)
 
-    def recv_basic(self):
-        total_data=[]
-        while True:
-            data = self.s.recv(1024)       
-            data = data.decode('ascii')    #
-            total_data.append(data)
-            time.sleep(0.5)
-            if '\n' in data:
-                total_data[-1] = total_data[-1][:-1] 
-                break
+
             
-        return ''.join(total_data) 
+
         
-    def get_value(self, command=b'FETCH1?\n'):
+    def get_value(self, command=b'FETCh3?\n'):    
         """Odczyt pomiarów z miernika"""
+        self.connection()
+        time.sleep(0.1) 
         try:
             self.s.sendall(command)
-            time.sleep(0.2)
-            self.s.sendall(b'\n')
-            time.sleep(0.25)
-            data = self.s.recv(1024)
-            #print(data)
-            if len(data) > 1:
-                self.s.close()
-                return data
-                return float(data.decode('ascii')[:-1])
-            else:
-                print('No respnse')
-                self.s.close()
-                return False
-        except socket.error as e:
-            self.logger.exception(e)
-            time.sleep(1)
-            self.s.close()
-            return e
+            time.sleep(0.1)
+        except ConnectionResetError as e:
+            print('self.s.sendall(command) ConnectionResetError', e)
+                    
+        data = self.recv_basic()
+        if data:
+            data = data.rstrip('\r\n')
+            return float(data)
+        else:
+            self.connection(on=False)
+            time.sleep(0.1)
+            self.get_value() 
+
+
 
 
 if __name__ == "__main__":
@@ -707,13 +714,13 @@ if __name__ == "__main__":
     obiekt = Q1()
     print(obiekt.self_test())
     fazy.realy_switching('000')"""
-    """load_dc = LOAD()
+    load_dc = LOAD()
     #print(load_dc.self_test())
     #time.sleep(1)
     load_dc.connection()
 
     time.sleep(0.5)
-    load_dc.set_value('CURR', 15)
+    load_dc.set_value('VOLT', 50)
     time.sleep(0.5)
     c = load_dc.get_value('CURR')
     print('current:',c) 
@@ -728,7 +735,7 @@ if __name__ == "__main__":
     print('temperature:',t)  
     time.sleep(0.5)
     r = load_dc.get_value('RES')
-    print('resistant:',r)  """          
+    print('resistant:',r)          
     
 
    
@@ -742,15 +749,20 @@ if __name__ == "__main__":
     
     time.sleep(5)
     print(mww.odczyt(2))"""
-    fluke = Fluke8845A()
+    """fluke = Fluke8845A() #ip='192.168.7.110'
     #print(fluke.self_test())
     #time.sleep(0.25)
-    fluke.connection()
-    time.sleep(0.25)
-    for i in range(1):
-        print(fluke.get_value(b'*OPC?')) #
-        time.sleep(1)
-    del fluke    
+    #fluke.connection()
+    for i in range(20):
+        while True:
+            odczyt = fluke.get_value()
+            if odczyt:       
+                print(f'{i} print fluke get value: {odczyt}')
+                break
+
+                 #
+        time.sleep(2)
+    fluke.connection(on=False)"""    
     #fluke.connection(on=False) 
     #del fluke   
     #mww = MWW()

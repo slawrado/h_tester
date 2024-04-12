@@ -20,66 +20,47 @@ selftest, stop_test, default_ip, bez_izolacji, bez_prostowników = False, False,
 with open('config.json', 'r', encoding='utf8') as json_file:
     config = json.load(json_file)
 
-lista_indeksow = (list(config.keys()))[:-1]
+lista_indeksow = (list(config.keys()))[:-1] #lista indeksów odczytana z pliku config.json
 operators = list(config['operators'].keys())
-#dane poszczególnych testów
-Test_data = namedtuple('Test_data', ['test_class','test_name', 'config_name', 'config_range', 'required_modules', 'config', 'result'])
-#Kritka z obiektami klas testów
-test_classes = tuple(testy.test_classes) 
 
-
-tests = {} # słownik z konfiguracją poszczególnych testów
-for i in test_classes:
-    tests[i.test_key] = Test_data(i, i.test_name, i.config_name, i.config_range, i.required_modules, [0], [False])
+tests = {x.__name__: x for x in testy.test_classes }
 # Dane identyfikacyjne testów
 ident = {'Nazwa:  ': '', 'Indeks:  ': '', 'Nr seryjny:  ': '', 'Nr seryjny Q1:  ': '',
          'Wersja programu Q1:  ': '', 'Wersja konfiguracji Q1:  ': '', 'Operator (test izolacji):  ':  '', 'Operator (test systemu):  ':  '', 'Data:  ':  ''}
 
 def set_config(indeks, debug=False):
     if debug:
-        print('indeks config')
+        print('indeks config before')
         for j in config[indeks]:
-            print(j, config[indeks][j], end='')
-        print('tests config')    
+            print(j, config[indeks][j])
+        print('tests config before\n')    
         for i in tests:
-            print(i, tests[i].config[0], end='')
-    for i in config[indeks]:
-        if config[indeks][i] == 0:
-            del tests[i] #usuniecie testu ze słownka testów do wykonania
+            print(i, tests[i].number_tests)
+    do_usuniecia = []        
+    for i in tests:
+        if config[indeks].get(i, 0) == 0: #jesli nie ma w konfiguracji
+            do_usuniecia.append(i)
+             #usuniecie testu ze słownka testów do wykonania
         else:
-            tests[i].config[0] = config[indeks][i]
-    if debug:        
+            tests[i].number_tests = config[indeks][i]
+            #print(tests[i].number_tests)
+    for i in do_usuniecia:
+        del tests[i]        
+    if debug: 
+        print('indeks config after\n')       
         for j in config[indeks]:
-            print(j, config[indeks][j], end='')            
+            print(j, config[indeks][j]) 
+        print('tests config after\n')               
         for i in tests:
-            print(i, tests[i].config[0], end='')   
+            print(i, tests[i].number_tests)   
 
 json_file = {}
 json_file.update(ident)
 
-
-
-tip = ('\"Podaje plusa\" na kolejne zabezpieczenia i weryfikuje wejście i zejście alarmu bezpiecznika odbioru.',
-       'Steruje stanem wyjść Q1 i weyfikuje zmiany.',
-       'Steruje stanem wyjść MWY i weyfikuje zmiany.',
-       'Zwiera wejścia MWE i sprawdza reakcję Q1.',
-       'Wykonuje rozwarcie i zwarcie styczników i weryfikuje odpowiednie alarmy sterownika.',
-       'Odcina zasilanie AC, sprawdza kierunek i wartość pradu baterii.',
-       'Sprawdza komunikację Q1 z czujnikami temperatury.',
-       'Wymusza i sprawdza pojawienie się i zejście kolejnych alarmów bezpiecznika baterii.',
-       'Wykonuje przydział faz, odcina kolejne fazy, sprawdza poprawność alrmów zaniku faz i awarii prostownika.',
-       'Sprawdza działanie wyjść i wejść MZK',
-       'Odczytuje rejestr 281 po modbus RTU i over TCP i porównuje odczyty',
-       'Podaje minus na wej alarmu asymetrii sterownika',
-       'Podaje minus na wej alarmu bezpiecznika baterii sterownika',
-       'Sprawdza komunikację MZK z czujnikami temperatury.',)
-text_p = dict(zip(tuple(tests.keys()), tip))
-
-
 def check_number(number, key):
     """ Waliduje dane wprowadzone przez uzytkownika
     (liczbę zabezpieczeń odbioru i prostowników)."""
-    max_number = {'-UKB': 33, '-PROSTOWNIK': 61}
+    max_number = {'TestUkb': 33, 'TestRectifier': 61}
     if number.isdigit() and int(number) in range(0, max_number[key]):
         return int(number)
     else:
@@ -101,10 +82,10 @@ def test_all_thread(w):
         print('Test numer: {}'.format(tuple(tests.keys()).index(i)+1))
         w[i + 'R'].update('In progress', text_color='yellow')
         w.refresh()
-        ti = tests[i].test_class(tests[i].config[0], w) #utworzenie instancji obiektu danego testu
+        ti = tests[i](tests[i].number_tests, w) #utworzenie instancji obiektu danego testu
         if ti.test():  # wywołanie metody test, jeśli wykona się poprawnie: zwróci True
             w[i + 'R'].update('Ok', text_color='white')
-            tests[i].result[0] = True
+            tests[i].test_result = True
         else:
             w[i + 'R'].update('Fail', text_color='red')
             if stop_test:
@@ -117,12 +98,11 @@ def test_all_thread(w):
         json_file[i] = ident[i]
     wynik = []
     for i in tests:
-        wynik.append(tests[i].result[0])
-        json_file[tests[i].test_name] = tests[i].result[0], tests[i].config[0]
-
+        wynik.append(tests[i].test_result)
+        json_file[tests[i].test_name] = tests[i].test_result, tests[i].number_tests
     q1 = modules.Q1(w=w)
-    if '-PROSTOWNIK' in tuple(tests.keys()) and not bez_prostowników:
-        json_file['prostowniki'] = q1.get_rectifier_serial(tests['-PROSTOWNIK'].config[0])#numery seryjne prostowników
+    if 'TestRectifier' in tuple(tests.keys()) and not bez_prostowników:
+        json_file['prostowniki'] = q1.get_rectifier_serial(tests['TestRectifier'].number_tests)#numery seryjne prostowników
     json_file['ip'], json_file['izolacja'], json_file['noserial'] = default_ip, bez_izolacji, bez_prostowników   
     if all(wynik) and default_ip:        
         q1.set_dufault_ip()
@@ -146,7 +126,7 @@ def make_main_window():
     """Tworzy zawartość głównego okna aplikacji."""
     col1, col2, col3, col4 = [], [], [], []
     for i in tests:
-        col1.append([sg.Text('{:>2}. {}'.format(tuple(tests.keys()).index(i) + 1, tests[i].test_name), key=i + 'P', tooltip=text_p[i])])
+        col1.append([sg.Text('{:>2}. {}'.format(tuple(tests.keys()).index(i) + 1, tests[i].test_name), key=i + 'P', tooltip=tests[i].__doc__)])
         col2.append([sg.Text(size=(12, 1), key=i + 'R')])
     
     for i in ident: 
@@ -197,8 +177,8 @@ def make_conf_window():
     
     for i in tests:
         col1.append([sg.Text(' {:>2}. {}: '.format(tuple(tests.keys()).index(i) + 1, tests[i].config_name))])
-        if i in ('-UKB', '-PROSTOWNIK'):
-            col2.append([sg.Input(size=(5, 1), default_text=tests[i].config[0], enable_events=False, justification='right',
+        if i in ('TestUkb', 'TestRectifier'):
+            col2.append([sg.Input(size=(5, 1), default_text=tests[i].number_tests, enable_events=False, justification='right',
                       expand_x=True, key=i, disabled=False)])          
         else:
             col2.append([sg.Combo(tests[i].config_range, size=(4, 1), default_value=0, enable_events=False,
@@ -211,7 +191,7 @@ def make_conf_window():
         [sg.Column(col1), sg.Column(col2, element_justification='right', expand_x=True)],
         [sg.HSep()],
         [sg.Push(), sg.Button('Zapisz', tooltip='')]]
-    return sg.Window('Konfiguracja uzytkownika', layout).read(close=True)# , finalize=True .make_modal() location=(0, 50)
+    return sg.Window('Konfiguracja użytkownika', layout).read(close=True)# , finalize=True .make_modal() location=(0, 50)
 
 
 # main_window['-ST-'].set_focus()
@@ -302,7 +282,7 @@ if ident['Indeks:  '] == '0000-00000-00':
         name = config['0000-00000-00'].pop('name')
 
         for i in config['0000-00000-00']:
-            if i == '-UKB' or i == '-PROSTOWNIK':
+            if i == 'TestUkb' or i == 'TestRectifier':
                 config['0000-00000-00'][i] = check_number(values[i], i)
             else:
                 config['0000-00000-00'][i] = int(values[i])
@@ -313,9 +293,7 @@ if ident['Indeks:  '] == '0000-00000-00':
         print(f'Konfiguracja zapisana.') 
 
 window = make_main_window()
-# Główna pętla aplikacji.
-
-
+# Petla wyswietlające główne okno aplikacji.
 try:
     while True:
         window, event, values = sg.read_all_windows()
@@ -340,14 +318,14 @@ try:
                 window.refresh()
                 selftest = True
                 if selftest:
-
+                    #Załączanie baterii
                     sb = modules.MZB(w=window)
                     sb.realy_switching('1111')
                     for i in range(5):
                         time.sleep(1)
                         window.refresh()
                     del sb
-
+                    # Załączanie prostowników
                     sf = modules.MZF(w=window)
                     sf.realy_switching('111')
                     for i in range(5):
@@ -364,7 +342,7 @@ try:
                     continue
                 else:
                     print('Komunikacja z Q1 OK.') 
-                    
+   
                 ident['Nr seryjny Q1:  '], ident['Wersja programu Q1:  '], ident['Wersja konfiguracji Q1:  '] = q1.ident_inf()
 
                 ident['Data:  '] = datetime.now().strftime("%d/%m/%Y")
@@ -418,7 +396,6 @@ try:
                 window[event].update(value=False)
             del sf
         elif event in ('b1', 'b2', 'b3', 'b4'): #baterie odłaczanie podłączanie
-            pass
             command = ['x', 'x', 'x', 'x']
             if values[event]:
                 command[int(event[1]) - 1] = '1'
@@ -436,7 +413,6 @@ try:
             json_file.update({'ident': tuple(ident.keys())})
             wykonane_testy = [tests[i].test_name for i in tuple(tests.keys())]
             json_file.update({'tests': wykonane_testy})
-            #print(json_file)
             with open('raport.json', 'w', encoding='utf8') as outfile: 
                 json.dump(json_file, outfile, ensure_ascii=False)            
             raport.save_pdf(json_file, name='raporty\\' + ident['Nazwa:  '], debug=False)
