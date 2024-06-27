@@ -15,13 +15,14 @@ import json
 
 __version__ = "1.0.0"
 #Wartości opcjonalnych elementów testu
-selftest, stop_test, default_ip, bez_izolacji, bez_prostowników = False, False, False, False, False
+selftest, stop_test, default_ip, bez_izolacji, bez_prostownikow = False, False, False, False, False
   
 with open('config.json', 'r', encoding='utf8') as json_file:
     config = json.load(json_file)
-
 lista_indeksow = (list(config.keys()))[:-1] #lista indeksów odczytana z pliku config.json
+tooltip_dict = {element: indeks for indeks, element in enumerate(lista_indeksow)} #słownik gdzie kluczem jest element z lista_indeksow a wartoscia indeks tej listy 
 operators = list(config['operators'].keys())
+#print([config[i]['name'] for i in lista_indeksow])
 
 tests = {x.__name__: x for x in testy.test_classes }
 # Dane identyfikacyjne testów
@@ -101,9 +102,9 @@ def test_all_thread(w):
         wynik.append(tests[i].test_result)
         json_file[tests[i].test_name] = tests[i].test_result, tests[i].number_tests
     q1 = modules.Q1(w=w)
-    if 'TestRectifier' in tuple(tests.keys()) and not bez_prostowników:
+    if 'TestRectifier' in tuple(tests.keys()) and not bez_prostownikow:
         json_file['prostowniki'] = q1.get_rectifier_serial(tests['TestRectifier'].number_tests)#numery seryjne prostowników
-    json_file['ip'], json_file['izolacja'], json_file['noserial'] = default_ip, bez_izolacji, bez_prostowników   
+    json_file['ip'], json_file['izolacja'], json_file['noserial'] = default_ip, bez_izolacji, bez_prostownikow   
     if all(wynik) and default_ip:        
         q1.set_dufault_ip()
         print('Adres 192.168.5.120 , dhcp off')
@@ -131,7 +132,7 @@ def make_main_window():
     
     for i in ident: 
         col3.append([sg.Text(f' {i}', size=(20, 1))])
-        col4.append([sg.Text(f' {ident[i]}', size=(15, 1), key=i)])
+        col4.append([sg.Text(f' {ident[i]}', size=(25, 1), key=i)])
     #col3.append([sg.Text(size=(34, 1), key='-3')])  # , visible=False 
     layout = [[sg.Text('Stan przekaźników: '),
 
@@ -190,6 +191,10 @@ def make_conf_window():
         
         [sg.Column(col1), sg.Column(col2, element_justification='right', expand_x=True)],
         [sg.HSep()],
+        [sg.Text('Indeks:'), sg.Input(size=(20, 1), expand_x=True, key='index')],
+        [sg.Text('Nazwa:'), sg.Input(size=(20, 1), expand_x=True, key='nazwa')],
+        [sg.Text('OS:     '), sg.Input(size=(20, 1), expand_x=True,key='os')],
+        [sg.HSep()],
         [sg.Push(), sg.Button('Zapisz', tooltip='')]]
     return sg.Window('Konfiguracja użytkownika', layout).read(close=True)# , finalize=True .make_modal() location=(0, 50)
 
@@ -240,38 +245,50 @@ except OSError as e:
         raise
 
 # Okno do wpisania indeksu i numeru serejnego testowanej siłowni
-event, values = sg.Window('Wybór szablonu',
+window_choose_index = sg.Window('Wybór szablonu',
                           [[sg.Text('Indeks wyrobu: ', size=(20, 1)),
-                            sg.Combo(values=lista_indeksow, size=(15, 1),
-                                     key='Indeks:  ', default_value=lista_indeksow[0])],
+                            sg.Combo(values=lista_indeksow, size=(20, 1),
+                                     key='Indeks:  ', default_value=lista_indeksow[0], tooltip=config[lista_indeksow[0]]['name'],
+                                     enable_events=True)],
                            [sg.Text('Numer seryjny: ', size=(20, 1)),
-                            sg.Input(size=(15, 1), justification='right',
+                            sg.Input(size=(20, 1), justification='right',
                                      expand_x=True, key='Nr seryjny:  ')],
                            [sg.Text('Operator (test izolacji): ', size=(20, 1)),
-                            sg.Combo(operators, size=(15, 1), default_value=operators[0],  # ident['Operator:  ']
+                            sg.Combo(operators, size=(20, 1), default_value=operators[0],  # ident['Operator:  ']
                                      key='Operator (test izolacji):  ')],
                             [sg.Text('Operator (test systemu): ', size=(20, 1)),         
-                            sg.Combo(operators, size=(15, 1), default_value=operators[0],  # ident['Operator:  ']
+                            sg.Combo(operators, size=(20, 1), default_value=operators[0],  # ident['Operator:  ']
                                      key='Operator (test systemu):  ')],
                             [sg.HSep()],                                              
                             [sg.Checkbox('Zatrzymaj po pierwszym negatywnym.', key='test_break', )],
                             [sg.Checkbox('Ustaw ip Q1 na 192.168.5.120', key='ip', )],
                             [sg.Checkbox('Raport sprawdzenia izolacji.', key='izolacja', )],
                             [sg.Checkbox('Raport bez numerów prostowników.', key='no_serial', )],
-                            [sg.Push(),sg.Button('OK'), ]]).read(close=True)
-# 'Indeks:  ': '', 'Nr seryjny:  '
-if event == sg.WINDOW_CLOSED:
-    sys.exit()
-if values['test_break']:
-    stop_test = True
-else:
-    stop_test = False    
-if values['Indeks:  ']:
-    if values['Indeks:  '] != '0000-00000-00':
-        set_config(values['Indeks:  '], debug=False)
-    ident['Indeks:  '], ident['Nr seryjny:  '], ident['Operator (test izolacji):  '] = values['Indeks:  '], values['Nr seryjny:  '], values['Operator (test izolacji):  ']
-    ident['Operator (test systemu):  '] = values['Operator (test systemu):  ']
-    stop_test, default_ip, bez_izolacji, bez_prostowników = values['test_break'], values['ip'], values['izolacja'], values['no_serial']
+                            [sg.Push(),sg.Button('OK', key='OK'), ]])
+                            
+
+                           
+# 'Indeks:  ': '', 'Nr seryjny: 
+while True: 
+    event, values = window_choose_index.read()
+    if event == sg.WINDOW_CLOSED:
+        sys.exit()
+    if values['test_break']:
+        stop_test = True
+    else:
+        stop_test = False
+    if values['Indeks:  ']:
+        if values['Indeks:  '] != '0000-00000-00':
+            set_config(values['Indeks:  '], debug=False)
+        ident['Indeks:  '], ident['Nr seryjny:  '], ident['Operator (test izolacji):  '] = values['Indeks:  '], values['Nr seryjny:  '], values['Operator (test izolacji):  ']
+        ident['Operator (test systemu):  '] = values['Operator (test systemu):  ']
+        stop_test, default_ip, bez_izolacji, bez_prostownikow = values['test_break'], values['ip'], values['izolacja'], values['no_serial']
+        testy.TestRectifier.bez_prostownikow = bez_prostownikow #informacja dla klasy TestProstowników czy sprawdzać alarm uszkodzenia prostownika
+    if event == 'OK':
+        break
+    elif event == 'Indeks:  ':
+        window_choose_index['Indeks:  '].set_tooltip(config[values['Indeks:  ']]['name'])     #update(tooltip=config[values['Indeks:  ']]['name'])   
+        print(len(values['Indeks:  ']))
 
 if ident['Indeks:  '] == '0000-00000-00':
     event, values = make_conf_window()
@@ -290,7 +307,28 @@ if ident['Indeks:  '] == '0000-00000-00':
 
                 # main_window['-ST-'].update(disabled=False)
         config['0000-00000-00']['name'] = name
-        print(f'Konfiguracja zapisana.') 
+        
+        if all([values['index'], values['nazwa'], values['os']]): #wypełnione wszystkie pola
+            config['0000-00000-00']['name'] = [values['nazwa'], values['os']] #przypisanie nazwy i oesa z formularza do konfiguracji
+            new_indeks = config['0000-00000-00']
+            new_indeks = {key: value for key, value in new_indeks.items() if value != 0} #usuniecie zerowych wartosci
+            with open('config.json', 'r', encoding='utf8') as json_file:
+                config_plik = json.load(json_file)
+            config_plik[values['index']] = new_indeks
+            config_plik = dict(sorted(config_plik.items()))
+            with open('config.json', 'w', encoding='utf8') as json_file:
+                json.dump(config_plik, json_file, ensure_ascii=False)              
+            print(f"Nowa konfiguracja zapisana pod indeksem: {values['index']}.")
+        elif values['index'] and values['index'] in lista_indeksow:
+            with open('config.json', 'r', encoding='utf8') as json_file:
+                config_plik = json.load(json_file)
+            del config_plik[values['index']]
+            #config_plik = dict(sorted(config_plik.items()))
+            with open('config.json', 'w', encoding='utf8') as json_file:
+                json.dump(config_plik, json_file, ensure_ascii=False)
+            print(f"Usunięta konfiguracja zapisana pod indeksem: {values['index']}.")     
+        else:
+            print('Konfiguracja dla uniwersalnego indeksu: 0000-00000-00 zapisana')     
 
 window = make_main_window()
 # Petla wyswietlające główne okno aplikacji.

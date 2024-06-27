@@ -1,0 +1,7 @@
+Esp32	Rs485
+
+GND	->  GND
+3V3	->  Vcc
+25	->  RO in
+26	->  DI out
+27	->  RSE

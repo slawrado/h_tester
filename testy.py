@@ -3,7 +3,7 @@ import modules
 import time
 from datetime import datetime
 import logging
-import os
+import os, sys
 import errno
 from pathlib import Path
 
@@ -278,7 +278,7 @@ class TestRs485:
         self.number = number
 
     def get_modules(self):
-        """Tworzy obiekty modułów urzywanych przy wykonywaniu testu"""
+        """Tworzy obiekty modułów używanych przy wykonywaniu testu"""
         if self.number:
             self.q1 = modules.Q1()
             self.rs485 = modules.RS485()
@@ -286,6 +286,9 @@ class TestRs485:
     def test(self):
         self.get_modules()
         start = datetime.now()
+        print('Ustawienie w q1 modbus slave na RS485_2')
+        self.q1.snmp_querry(self.q1.oids_name['modbusSlave_UartIdx'], value=3)
+        time.sleep(2)
         self.logger.info('Test: poprawności komunikacji portu rs485')
         printr(
             'Start testu komunikacji portu rs485: {:02d}:{:02d}:{:02d}'.format(start.hour, start.minute, start.second),
@@ -320,7 +323,7 @@ class TestBezpiecznikaBat:
     test_number = 13
     test_name = 'Test alarmu bezpiecznika baterii'
     config_name = 'Alarm bezpiecznika baterii'
-    config_range = list(range(5))
+    config_range = list(range(2))
     required_modules = (modules.Q1, modules.MWW)
     number_tests = 0
     test_result = False
@@ -331,6 +334,7 @@ class TestBezpiecznikaBat:
         self.w = w
         self.mww = None
         self.number = number
+    
 
     def get_modules(self):
         """Tworzy obiekty modułów używanych przy wykonywaniu testu"""
@@ -359,7 +363,7 @@ class TestBezpiecznikaBat:
             self.logger.warning('Stan alarmu bezpiecznika baterii {}'.format(alarm_bezpiecznika_baterii))
             printr('Przed rozpoczeciem testu wykryto alarm bezpiecznika baterii!', self.w, self.logger, color='red')
             return False
-        r = self.mww.send_packet(str(adres) + ',1,0')
+        r = self.mww.send_packet(str(adres) + ',2,0')
         time.sleep(5)
         alarm_bezpiecznika_baterii = self.q1.snmp_querry('.1.3.6.1.4.1.32038.2.2.5.22.1.4.0')
         print('alarm_bezpiecznika_baterii:', alarm_bezpiecznika_baterii)
@@ -372,7 +376,7 @@ class TestBezpiecznikaBat:
                    self.logger)
             return False
 
-        r = self.mww.send_packet(str(adres) + ',1,1')
+        r = self.mww.send_packet(str(adres) + ',2,1')
         time.sleep(6)
 
         alarm_bezpiecznika_baterii = self.q1.snmp_querry('.1.3.6.1.4.1.32038.2.2.5.22.1.4.0')
@@ -450,7 +454,7 @@ class TestAsymBat:
 
 
 
-        r = self.mww.send_packet(str(adres) + ',2,0')
+        r = self.mww.send_packet(str(adres) + ',1,0')
         time.sleep(5)
         alarm_asymetrii_baterii = self.q1.snmp_querry('.1.3.6.1.4.1.32038.2.2.5.24.1.2.0')
         if alarm_asymetrii_baterii == '1':
@@ -460,7 +464,7 @@ class TestAsymBat:
             printr('Error, test alaramu asymetrii baterii negatywny {}'.format(alarm_asymetrii_baterii), self.w, self.logger)
             return False
 
-        r = self.mww.send_packet(str(adres) + ',2,1')
+        r = self.mww.send_packet(str(adres) + ',1,1')
         time.sleep(6)
 
         alarm_asymetrii_baterii = self.q1.snmp_querry('.1.3.6.1.4.1.32038.2.2.5.24.1.2.0')
@@ -666,7 +670,7 @@ class TestOutputQ1:
         self.mww = None
         self.number = number
         self.realy_on = {5: 247, 4: 251, 3: 253, 2: 254}  # Klucze załączenia przekaźników 2-5: Q1, warości stan mwe testera
-        #self.offset = 0
+        self.offset = 2
 
     def get_modules(self):
         """Tworzy obiekty modułów używanych przy wykonywaniu testu"""
@@ -692,10 +696,9 @@ class TestOutputQ1:
         printr('Start testu wyjść {}: {:02d}:{:02d}:{:02d}'.format(self.name, start.hour, start.minute, start.second), self.w, self.logger)
         printr(f'Liczba zadeklarowanych wyjść: {self.number}', self.w, self.logger)
         # print('{:08b}'.format(int(self.i2c.send_packet(str(nr)).decode())))
-        set_realy = tuple([j + 2 for j in range(self.number)])  # generuje klucze na podstawie liczby wyjśc alarmowych Q1 lub MWY
+        set_realy = tuple([j + self.offset for j in range(self.number)])  # generuje klucze na podstawie liczby wyjśc alarmowych Q1 lub MWY
         
-        
-        if self.mww.odczyt(self.adres) != '255':
+        if self.mww.odczyt(self.adres) != '0':#'255':
             printr('Przed rozpoczęciem testu wyjścia powininy być stanie bezalarmowym', self.w, self.logger, color='red')
             return False
 
@@ -706,9 +709,13 @@ class TestOutputQ1:
             pb += 1
             self.q1.snmp_querry('.1.3.6.1.4.1.32038.2.2.17.2.0', value=i)
             time.sleep(2)
-            if self.mww.send_packet(str(self.adres)) == str(self.realy_on[i]):
-                printr('Wyjście: {} OK'.format(i - self.offset), self.w, self.logger)
-                self.logger.info('({}) Wyjście: {} OK {:08b}'.format(self.number, i - self.offset, self.realy_on[i]))
+            key_values = self.realy_on[i]
+            stan_mwe = self.mww.send_packet(str(self.adres))
+            #print(i, key_values, stan_mwe)
+            #if self.mww.send_packet(str(self.adres)) == str(self.realy_on[i]):
+            if stan_mwe == str(key_values):
+                printr('Wyjście: {} OK'.format(i - self.offset + 1), self.w, self.logger)
+                self.logger.info('({}) Wyjście: {} OK {:08b}'.format(self.number, i - self.offset + 1, self.realy_on[i]))
             else:
                 printr('Wyjście: {} Error'.format(i - self.offset), self.w, self.logger)
                 logger.warning('({}) Wyjście: {} Error  {:8b}'.format(self.number, i - self.offset, self.realy_on[i]))
@@ -731,7 +738,7 @@ class TestOutputQ1:
         return True
 @register
 class TestOutputMWY(TestOutputQ1):
-    """Sprawdza wyjscia Q1, steruje stanem wyjść MWY i weyfikuje zmiany."""
+    """Steruje stanem wyjść MWY i weyfikuje zmiany."""
     test_number = 3
     test_name = 'Test wyjść (MWY)'
     config_name = 'Wyjścia (MWY)'
@@ -746,7 +753,9 @@ class TestOutputMWY(TestOutputQ1):
         self.w = w
         self.mww = None
         self.number = number
-        self.realy_on = {17: 127, 16: 191, 15: 223, 14: 239, 13: 247, 12: 251, 11: 253, 10: 254} # Klucze załączenie przekaźnika 10-17: MWY, wartości stan mwe testera
+        #self.realy_on = {17: 127, 16: 191, 15: 223, 14: 239, 13: 247, 12: 251, 11: 253, 10: 254} # Klucze załączenie przekaźnika 10-17: MWY, wartości stan mwe testera
+        self.realy_on = {17: 128, 16: 64, 15: 32, 14: 16, 13: 8, 12: 4, 11: 2, 10: 1}
+        self.offset = 10
 @register
 class TestUkb:
     """Sprawdza działanie płytki UKB, Podaje plusa na kolejne zabezpieczenia i weryfikuje wejście i zejście alarmu bezpiecznika odbioru."""
@@ -1081,13 +1090,13 @@ class TestRectifier:
 
     """Wykonuje przydział faz, odcina kolejne fazy, sprawdza poprawność alrmów zaniku faz i awarii prostownika.Sprawdza pracę prostowników"""
     test_number = 1
-    test_name = 'Test prostowników'
+    test_name = 'Test pracy prostowników'
     config_name = 'Prostowniki'
     config_range = None
     required_modules = (modules.Q1, modules.MZF)
     number_tests = 0
     test_result = False
-    
+    bez_prostownikow =False
 
     def __init__(self, number=0, w=None):
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -1102,10 +1111,38 @@ class TestRectifier:
         if self.number:
             self.q1 = modules.Q1()
             self.fazy = modules.MZF()
-        if self.fazy.realy_switching('xxx') != '111':
-            self.logger.info('Załączam wszystkie fazy')
-            self.fazy.realy_switching('111')
-            time.sleep(6)
+            if self.fazy.realy_switching('xxx') != '111':
+                self.logger.info('Załączam wszystkie fazy')
+                self.fazy.realy_switching('111')
+                #time.sleep(6)
+                self.wait_for_expected_value(self.q1.snmp_querry, ('.1.3.6.1.4.1.32038.2.2.2.12.0',),  30, str(self.number))
+
+    def wait_for_expected_value(self, func, args, timeout, expected_value, interval=2):
+        """
+        Wysyła zapytanie co `interval` sekund, przez maksymalnie `timeout` sekund,
+        aż zapytanie zwróci oczekiwaną wartość `expected_value`.
+        
+        Parameters:
+        timeout (int): maksymalny czas oczekiwania w sekundach
+        expected_value: oczekiwana wartość
+        interval (int): odstęp czasu między kolejnymi zapytaniami w sekundach
+        
+        Returns:
+        bool: True jeśli zapytanie zwróciło oczekiwaną wartość w czasie `timeout` sekund, w przeciwnym razie False
+        """
+        print('Oczekiwanie na ogarniecie się sterownika q1')
+        last_result = None
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            result = func(*args) #self.q1.snmp_querry('.1.3.6.1.4.1.32038.2.2.2.12.0')
+            if last_result != result:
+                print('q->', result)
+            if result == expected_value:
+                return True
+            time.sleep(interval)
+            last_result = result
+        return False
+
     def make_phase_order(self):        
         printr('Wyjmij wszystkie prostowniki z siłowni', self.w, self.logger, color='blue')
         to_long = 12
@@ -1158,7 +1195,11 @@ class TestRectifier:
         if self.fazy.realy_switching('xxx') != '111':
             self.logger.info('Załączam wszystkie fazy')
             self.fazy.realy_switching('111')
-            time.sleep(8)
+            #time.sleep(8)
+            rect_on =  self.wait_for_expected_value(self.q1.snmp_querry, ('.1.3.6.1.4.1.32038.2.2.2.12.0',),  60, str(self.number))
+            if not rect_on:
+                return rect_on
+
         else:
             self.logger.info('Wszystkie fazy załaczone')
         if self.number == 1:
@@ -1183,10 +1224,11 @@ class TestRectifier:
             for j in range(3 - liczba_faz): set_fazy += 'x'  # gdy liczba faz mniejsza niż trzy
             self.fazy.realy_switching(set_fazy)
             #print('inverted_logic:',inverted_logic)
-            time.sleep(5)
-            q1_stan_faz = self.q1.snmp_querry(*oids)
+            #time.sleep(10)
+            stan_faz =  self.wait_for_expected_value(self.q1.snmp_querry, oids, 60, inverted_logic)
+            #q1_stan_faz = self.q1.snmp_querry(*oids)
             #print('Alarm faz snmp:', q1_stan_faz, datetime.now())
-            if q1_stan_faz == inverted_logic:
+            if stan_faz:#q1_stan_faz == inverted_logic:
                 printr('Zanik i alarm fazy: {} OK'.format(i + 1), self.w, self.logger)
                 if self.w:
                     self.w['progress'].update_bar(i + 1 + self.number * 2, self.number * 3)
@@ -1199,9 +1241,11 @@ class TestRectifier:
                 #return False 
             self.logger.info('Załączam wszystkie fazy')
             self.fazy.realy_switching('111')
-            time.sleep(5) 
+            rect_on =  self.wait_for_expected_value(self.q1.snmp_querry, ('.1.3.6.1.4.1.32038.2.2.2.12.0',),  60, str(self.number))
         return True                   
     def alarm_prostownika(self):
+        if self.bez_prostownikow: #nie sprawdzamy alarmu uszkodzenia prostownika
+            return True
         for i in range(self.number):
             if self.w:
                 self.w['progress'].update_bar(i + self.number + 1, self.number * 3)
@@ -1349,7 +1393,7 @@ class TestMWS:
     test_number = 11
     test_name = 'Test MWS'
     config_name = 'MWS'
-    config_range = list(range(3))
+    config_range = list(range(2))
     required_modules = (modules.LOAD, )
     number_tests = 0
     test_result = False
@@ -1361,8 +1405,7 @@ class TestMWS:
         self.w = w
         self.number = number
         self.rgr = (42.0, 48.0)
-        self.krytyczna = (44.0, 48.0)
-        self.niekrytyczna = (45.0, 49.0)
+        self.grupa = (45.0, 49.0)
 
     def get_modules(self):
         """Tworzy obiekty modułów używanych przy wykonywaniu testu"""
@@ -1380,38 +1423,64 @@ class TestMWS:
         printr(f'Liczba zadeklarowanych modułów MWS: {self.number}', self.w, self.logger)
 
         self.load.connection()
-        #offset = self.fluke.reading() - self.load.get_value('VOLT')
-        #print(offset)
-        #import sys
-        #sys.exit()
-        print(f'Napiecie niekrytycznych przed testem: {self.fluke.reading()}')
+
+        print(f"Napiecie systemu przed testem: {self.load.get_value('VOLT')}")
+        if self.load.get_value('VOLT') == 9.9e+37:
+            print('RGR odłaczony przed rozpoczeciem testu!')
+            return False
+        self.load.set_mode('VOLT')    
+        self.load.set_value('VOLT', self.rgr[0])
+        print(f'Ustawienie obciążenia na {self.rgr[0]}')      
+        time.sleep(20)
+        print(f"Napiecie systemu po 20 sekundach: {self.load.get_value('VOLT')}")      
+        if  self.load.get_value('VOLT') == 9.9e+37:
+            print('MWS RGR: OK')
+        else:
+            print('MWS nie odłaczył RGR: Error')
+            return False
+        self.load.set_value('VOLT', 0)             
+        print(f'Wyłączenie obciazenia')
+
+        time.sleep(300)
+        print(f"Napiecie systemu po 300 sekundach: {self.load.get_value('VOLT')}")
+        if  self.load.get_value('VOLT') != 9.9e+37 and  self.load.get_value('VOLT') > self.rgr[1] -1:
+            print('MWS podłaczył RGR: OK')
+        else:
+            print('MWS nie podłaczył RGR: Error')
+            self.load.set_value('VOLT', 0)
+            return False
+        self.load.set_value('VOLT', 0) 
+        print(f"Napiecie po wyłączeniu obciążenia: {self.load.get_value('VOLT')}") 
+
+        """
+        print(f'Napiecie grupy przed testem: {self.fluke.reading()}')
         if self.fluke.reading == 9.9e+37:
             print('Grupa odłaczona przed rozpoczeciem testu!')
             return False
         self.load.set_mode('VOLT')    
-        self.load.set_value('VOLT', self.niekrytyczna[0])
-        print(f'Ustawienie obciążenia na {self.niekrytyczna[0]}')      
+        self.load.set_value('VOLT', self.grupa[0])
+        print(f'Ustawienie obciążenia na {self.grupa[0]}')      
         time.sleep(20)
-        print(f'Napiecie niekrytycznych po 20 sekundach: {self.fluke.reading()}')      
+        print(f'Napiecie grupy po 20 sekundach: {self.fluke.reading()}')      
         if  self.fluke.reading() == 9.9e+37:
-            print('MWS odłaczył grupę niekrytyczną: OK')
+            print('MWS odłaczył grupę: OK')
         else:
-            print('MWS nie odłaczył grupy niekrytycznej: Error')
+            print('MWS nie odłaczył grupy: Error')
             return False
-        self.load.set_value('VOLT', self.niekrytyczna[1] + 0.8)             
-        print(f'Ustawieniu obciążenia na {self.niekrytyczna[1] + 0.8}')
+        self.load.set_value('VOLT', 0)             
+        print(f'Wyłączenie obciazenia')
 
         time.sleep(300)
-        print(f'Napiecie niekrytycznych po 300 sekundach: {self.fluke.reading()}')
-        if  self.fluke.reading() != 9.9e+37 and  self.fluke.reading() > self.niekrytyczna[1] -1:
-            print('MWS podłaczył grupę niekrytyczną: OK')
+        print(f'Napiecie grupy po 300 sekundach: {self.fluke.reading()}')
+        if  self.fluke.reading() != 9.9e+37 and  self.fluke.reading() > self.grupa[1] -1:
+            print('MWS podłaczył grupę: OK')
         else:
-            print('MWS nie podłaczył grupy niekrytycznej: Error')
+            print('MWS nie podłaczył grupy: Error')
             self.load.set_value('VOLT', 0)
             return False
         self.load.set_value('VOLT', 0) 
         print(f'Napiecie po wyłączeniu obciążenia: {self.fluke.reading()}')      
-        
+        """
 
                      
 
@@ -1433,8 +1502,8 @@ if __name__ == "__main__":
     del t
     t = TestRs485()
     print(t.get_modules())"""
-    lista_modulow = [TestRectifier, TestUkb, TestInput, TestOutputQ1, TestOutputMWY, TestBocznika, TestBaterryFuses,
-                     TestCzujnikowTemp, TestStycznika, TestRs485, TestMZK]
+    #lista_modulow = [TestRectifier, TestUkb, TestInput, TestOutputQ1, TestOutputMWY, TestBocznika, TestBaterryFuses,
+    #                 TestCzujnikowTemp, TestStycznika, TestRs485, TestMZK]
     """modules.MZF(4).realy_switching('1111')
     time.sleep(2)
     modules.MZF(3).realy_switching('111')
@@ -1461,13 +1530,45 @@ if __name__ == "__main__":
     mzk_sensor = TestCzujnikowMZK(number=1)
     mzk_sensor.get_modules()
     mzk_sensor.test()"""
+    TestRectifier.bez_prostownikow = True
+    t = TestRectifier(number=3)
+    t.get_modules()
+    t.test()
+    #print(type(t.q1.snmp_querry))
+    #t.wait_for_expected_value(t.q1.snmp_querry, '.1.3.6.1.4.1.32038.2.2.2.12.0', 120, str(t.number))
+    #t.test() 
+    sys.exit()   
+    bezbat = TestBezpiecznikaBat(1)
+    bezbat.get_modules()
+    bezbat.test()
+    
+    mwy = TestOutputMWY(number=8)
+    mwy.get_modules()
+    mwy.test()
 
 
-    #test_battery_fuses = TestBaterryFuses(number=3)
-    #test_battery_fuses.test()
-    #test = TestBocznika(number=1)
-    #print(test_out_q1.mww.send_packet(str(test_out_q1.adres)))
-    #test.get_modules()
+    sys.exit()
+
+    
+    t_rs485 = TestRs485(number=1)
+    t_rs485.get_modules()
+    t_rs485.test()    
+
+
+    t_mwy = TestOutputMWY(number=1)
+    t_mwy.get_modules()
+    t_mwy.test()
+    
+    test_stycznika = TestStycznika(number=2)
+    test_stycznika.get_modules()
+    test_stycznika.test()
+    
+    test_battery_fuses = TestBaterryFuses(number=1)
+    test_battery_fuses.test()
+    
+    test_b = TestBocznika(number=1)
+    test_b.get_modules()
+    test_b.test()
     #time.sleep(40)
     #test.check_phase()
     #test = TestUkb(number=8)
@@ -1476,9 +1577,11 @@ if __name__ == "__main__":
     #test.test()
     #for i in test_classes:
     #    print(i.__name__)
+
+    """
     mws = TestMWS(number=1)
     mws.get_modules()
-    mws.test()
+    mws.test()"""
     
 
 

@@ -87,7 +87,14 @@ class Q1:
         'ident.identConfigurationVersion': '.1.3.6.1.4.1.32038.2.2.1.7.0',
         'systemDC.rectNrOfFound': '.1.3.6.1.4.1.32038.2.2.2.12.0',
         'snmpRCom': '.1.3.6.1.4.1.32038.2.2.6.4.1.0',
-        'snmpWCom': '.1.3.6.1.4.1.32038.2.2.6.4.2.0'}
+        'snmpWCom': '.1.3.6.1.4.1.32038.2.2.6.4.2.0',
+        'modbusSlave_UartIdx': '.1.3.6.1.4.1.32038.2.2.6.2.1.0',
+        'rtcYear': '.1.3.6.1.4.1.32038.2.2.11.9.0',
+        'rtcMonth': '.1.3.6.1.4.1.32038.2.2.11.6.0',
+        'rtcDay': '.1.3.6.1.4.1.32038.2.2.11.7.0',
+        'rtcHour': '.1.3.6.1.4.1.32038.2.2.11.5.0', 
+        'rtcMinutes': '.1.3.6.1.4.1.32038.2.2.11.4.0',
+        'rtcSeconds': '.1.3.6.1.4.1.32038.2.2.11.3.0'}
 
 
 
@@ -98,7 +105,8 @@ class Q1:
         self.alarmy = []
         self.logger = logging.getLogger('q1')
         self.read_community = 'public'
-        self.write_community = 'private'
+        self.write_community = 'public'
+        #self.set_rtc()
         #print(self.read_community, self.write_community)
         #self.get_community()
         #print(self.read_community, self.write_community)
@@ -161,6 +169,34 @@ class Q1:
                 self.w['-OUTPUT-'].update('Błąd komunikacji: SNMP!\n', text_color_for_value='red', append=True)
             self.logger.warning(f'Error snmp: {output.stderr}')
             return False
+
+    def set_rtc(self):
+        # Pobranie bieżącej daty i czasu
+        current_datetime = datetime.now()
+
+        wc = self.snmp_querry(self.oids_name['snmpWCom'])
+        if wc:
+            self.write_community = wc
+        print(f'Write comunity ustawione na: {self.write_community}')
+        # Wydobycie poszczególnych elementów
+        year = current_datetime.year
+        month = current_datetime.month
+        day = current_datetime.day
+        hour = current_datetime.hour
+        minute = current_datetime.minute
+        second = current_datetime.second
+
+        self.snmp_querry(self.oids_name['rtcYear'], value=str(year))
+        self.snmp_querry(self.oids_name['rtcMonth'], value=str(month))
+        self.snmp_querry(self.oids_name['rtcDay'], value=str(day))
+        self.snmp_querry(self.oids_name['rtcHour'], value=str(hour))
+        self.snmp_querry(self.oids_name['rtcMinutes'], value=str(minute))
+        self.snmp_querry(self.oids_name['rtcSeconds'], value=str(second))
+
+        print(f'Czas sterownika ustawiony na: {self.rtc()}')
+        
+
+
 
     def rtc(self):
         """Odczytuje aktualny czas sterownika"""
@@ -486,11 +522,11 @@ class MWW:
         # try:
         return self.send_packet(str(adres))
 
-    def self_test(self):
+    def self_test(self, ilosc=4):
         """Sprawdza komunikacje z modułem i poszczególnymi płytkami"""
 
         if ping(self.ip):
-            for nr_m_mww in range(4):  # liczba płytek w module wejśc wyjśc testera docelowo 2 MWE 6 MWY , ip['-RS485-']
+            for nr_m_mww in range(ilosc):  # liczba płytek w module wejśc wyjśc testera docelowo 2 MWE 6 MWY , ip['-RS485-']
                 m = self.odczyt(nr_m_mww)
                 if m:
                     print(f'Komunikacja MWW testera z płytką o adresie:  {nr_m_mww} OK')
@@ -547,7 +583,7 @@ class MWW:
             # self.send_packet(data)
         finally:
             s.close()
-        s.close()
+        #s.close()
         return resp
 
 
@@ -690,9 +726,22 @@ if __name__ == "__main__":
     r = m.get_register().registers[0]
     print(m.registers_values)
     del m
-    print(r)
-    m = Q1Unit('192.168.1.122')
-    print(m.snmp_querry(m.oids_name['environment.tempSensorBattery']))"""
+    print(r)"""
+    q1 = Q1()
+    print(q1.rtc())
+    print(q1.snmp_querry(q1.oids_name['modbusSlave_UartIdx']))
+    q1.snmp_querry(q1.oids_name['modbusSlave_UartIdx'], value=3)
+    print(q1.snmp_querry(q1.oids_name['modbusSlave_UartIdx']))
+    sys.exit()
+    mww = MWW()
+    #mww.self_test()
+    print(mww.odczyt(2))
+    mww.send_packet('2,2,1')
+    print(mww.odczyt(2))
+    
+    m = Q1()
+    print(m.snmp_querry('.1.3.6.1.4.1.32038.2.2.5.22.1.4.0'))
+    sys.exit()
     # m = RelpolOnOff(3)
     # m.self_test()
     # m.realy_switching('111')
